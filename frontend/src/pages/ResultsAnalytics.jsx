@@ -131,12 +131,16 @@ export default function ResultsAnalytics() {
           </div>
 
           {/* List of Individual Testcase Cards matching user screenshot */}
-          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
             {testResults.map((tc, idx) => {
-              const indexNum = tc.testIndex || tc.testCase || (idx + 1);
+              // Fix sequential 1-based index numbering: Testcase 1, Testcase 2, etc.
+              const indexNum = idx + 1;
               const passed = Boolean(tc.passed);
               const errorMsg = tc.error || '';
               const runtimeVal = tc.runtimeMs !== undefined ? tc.runtimeMs : (tc.runtime !== undefined ? tc.runtime : 0);
+              const inputVal = tc.input !== undefined ? (typeof tc.input === 'object' ? JSON.stringify(tc.input) : String(tc.input)) : '';
+              const expectedVal = tc.expected !== undefined ? String(tc.expected) : (tc.expectedOutput !== undefined ? String(tc.expectedOutput) : '');
+              const actualVal = tc.output !== undefined ? String(tc.output) : (tc.actualOutput !== undefined ? String(tc.actualOutput) : '');
 
               return (
                 <div 
@@ -163,23 +167,47 @@ export default function ResultsAnalytics() {
                     <span className="text-[#555555] font-mono text-[11px] font-bold">{runtimeVal}ms</span>
                   </div>
 
-                  {/* Red Error Message matching screenshot */}
-                  {!passed && errorMsg && (
-                    <div className="mt-2 text-rose-700 font-mono text-xs pl-7 font-bold whitespace-pre-wrap">
-                      '{errorMsg}'
-                    </div>
-                  )}
+                  {/* Testcase Input & Output Details for ALL Testcases */}
+                  <div className="mt-2 pl-7 space-y-1 text-[11px] font-mono">
+                    {/* Error Message if failed */}
+                    {!passed && errorMsg && (
+                      <div className="text-rose-700 font-bold bg-rose-100/80 p-2 rounded border border-rose-200 whitespace-pre-wrap mb-1">
+                        Console / Runtime Error: '{errorMsg}'
+                      </div>
+                    )}
 
-                  {!passed && !errorMsg && (tc.expected || tc.expectedOutput || tc.output || tc.actualOutput) && (
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] font-mono pl-7">
-                      {(tc.expected || tc.expectedOutput) && <div className="text-slate-600">Expected: <span className="text-emerald-700 font-bold">{tc.expected || tc.expectedOutput}</span></div>}
-                      {(tc.output || tc.actualOutput) && <div className="text-slate-600 font-bold">Actual: <span className="text-rose-700">{tc.output || tc.actualOutput}</span></div>}
-                    </div>
-                  )}
+                    {inputVal && (
+                      <div className="text-slate-600">
+                        Input: <span className="text-[#111111] font-bold">{inputVal}</span>
+                      </div>
+                    )}
+
+                    {expectedVal && (
+                      <div className="text-slate-600">
+                        Expected: <span className="text-emerald-700 font-bold">{expectedVal}</span>
+                      </div>
+                    )}
+
+                    {actualVal && (
+                      <div className="text-slate-600">
+                        Actual: <span className={`font-bold ${passed ? 'text-emerald-700' : 'text-rose-700'}`}>{actualVal}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
+
+          {/* Raw Console Output Log if present */}
+          {sub.rawOutput && !sub.rawOutput.includes('__RESULTS__') && (
+            <div className="pt-2">
+              <div className="text-[#555555] font-bold uppercase text-[10px] mb-1">Raw Console Output & Log:</div>
+              <pre className="p-2.5 bg-slate-900 text-slate-200 font-mono text-xs rounded-lg max-h-28 overflow-y-auto whitespace-pre-wrap">
+                {sub.rawOutput}
+              </pre>
+            </div>
+          )}
         </div>
       );
     }
@@ -329,7 +357,7 @@ export default function ResultsAnalytics() {
               </div>
 
               {/* Code Editor Preview */}
-              <div className="flex-1 overflow-hidden h-56 rounded-lg border border-slate-200">
+              <div className="flex-1 overflow-hidden h-52 rounded-lg border border-slate-200">
                 <CodeEditor
                   value={viewCodeModal.code}
                   language={viewCodeModal.language}

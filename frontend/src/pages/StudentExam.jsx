@@ -920,25 +920,58 @@ export default function StudentExam() {
                       )}
 
                       {/* Parsed Testcase Cards */}
-                      {testResults?.map((tr, idx) => (
-                        <div key={idx} className="p-2.5 rounded bg-[#282828] border border-[#3e3e3e] space-y-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              {tr.passed ? <CheckCircle2 className="w-4 h-4 text-[#00b8a3]" /> : <XCircle className="w-4 h-4 text-[#FF375F]" />}
-                              <span className="font-bold text-white">Testcase {tr.testIndex || idx + 1}</span>
+                      {testResults?.map((tr, idx) => {
+                        const indexNum = idx + 1;
+                        const passed = Boolean(tr.passed);
+                        const runtimeVal = tr.runtimeMs !== undefined ? tr.runtimeMs : (tr.runtime !== undefined ? tr.runtime : 0);
+                        const inputVal = tr.input !== undefined ? (typeof tr.input === 'object' ? JSON.stringify(tr.input) : String(tr.input)) : '';
+                        const expectedVal = tr.expected !== undefined ? String(tr.expected) : (tr.expectedOutput !== undefined ? String(tr.expectedOutput) : '');
+                        const actualVal = tr.output !== undefined ? String(tr.output) : (tr.actualOutput !== undefined ? String(tr.actualOutput) : '');
+
+                        return (
+                          <div key={idx} className={`p-3 rounded-lg border space-y-1.5 font-mono text-xs ${
+                            passed ? 'bg-[#1b2a22] border-[#22543d]' : 'bg-[#2a1b1e] border-[#54222b]'
+                          }`}>
+                            <div className="flex items-center justify-between font-bold">
+                              <div className="flex items-center space-x-2">
+                                {passed ? (
+                                  <span className="w-5 h-5 rounded-full bg-[#00b8a3]/20 text-[#00b8a3] flex items-center justify-center text-[10px] border border-[#00b8a3]/40">✓</span>
+                                ) : (
+                                  <span className="w-5 h-5 rounded-full bg-[#FF375F]/20 text-[#FF375F] flex items-center justify-center text-[10px] border border-[#FF375F]/40">✕</span>
+                                )}
+                                <span className="text-white text-sm font-extrabold">Testcase {indexNum}</span>
+                              </div>
+                              <span className="text-[#8a8a8a] text-xs font-mono">{runtimeVal}ms</span>
                             </div>
-                            <span className="text-[#8a8a8a]">{tr.runtimeMs}ms</span>
+
+                            <div className="pl-7 space-y-1 text-xs">
+                              {tr.error && (
+                                <div className="text-[#FF375F] font-mono text-xs font-bold bg-[#FF375F]/10 p-2 rounded border border-[#FF375F]/20 whitespace-pre-wrap">
+                                  Console / Runtime Error: '{tr.error}'
+                                </div>
+                              )}
+
+                              {inputVal && (
+                                <div className="text-slate-400">
+                                  Input: <span className="text-white font-bold">{inputVal}</span>
+                                </div>
+                              )}
+
+                              {expectedVal && (
+                                <div className="text-slate-400">
+                                  Expected: <span className="text-[#00b8a3] font-bold">{expectedVal}</span>
+                                </div>
+                              )}
+
+                              {actualVal && (
+                                <div className="text-slate-400">
+                                  Actual: <span className={`font-bold ${passed ? 'text-[#00b8a3]' : 'text-[#FF375F]'}`}>{actualVal}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          {tr.error ? (
-                            <div className="text-[#FF375F] text-[11px] font-mono mt-1">{tr.error}</div>
-                          ) : (
-                            <div className="text-[11px] text-[#cccccc] flex justify-between pt-1">
-                              <span>Output: <strong className="text-white">{tr.output || 'None'}</strong></span>
-                              <span>Expected: <strong className="text-[#00b8a3]">{tr.expected}</strong></span>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

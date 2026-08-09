@@ -395,6 +395,12 @@ router.post('/submit', async (req, res) => {
       verdict: 'Pending'
     });
 
+    const allTestcases = [
+      ...(question.sampleTestcases || []),
+      ...(question.hiddenTestcases || [])
+    ];
+    const testcasesToEvaluate = allTestcases.length > 0 ? allTestcases : question.sampleTestcases;
+
     const jobInfo = await addSubmissionToQueue({
       submissionId: submission._id,
       sessionId: session._id,
@@ -402,7 +408,7 @@ router.post('/submit', async (req, res) => {
       language,
       code,
       customTemplate,
-      testcases: question.hiddenTestcases.length > 0 ? question.hiddenTestcases : question.sampleTestcases,
+      testcases: testcasesToEvaluate,
       timeLimitMs: question.timeLimitMs,
       memoryLimitMb: question.memoryLimitMb,
       socketId
