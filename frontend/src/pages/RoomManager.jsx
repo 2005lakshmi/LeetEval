@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
-import { Plus, Monitor, Play, AlertTriangle, KeyRound, ArrowRight, Lock, RefreshCw, HelpCircle } from 'lucide-react';
+import { Plus, Monitor, Play, AlertTriangle, KeyRound, ArrowRight, Lock, RefreshCw, HelpCircle, Trash2 } from 'lucide-react';
 
 export default function RoomManager() {
   const [rooms, setRooms] = useState([]);
@@ -36,6 +36,18 @@ export default function RoomManager() {
       console.error('Error fetching rooms:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteRoom = async (roomId) => {
+    if (!confirm('Are you sure you want to DELETE this exam room? This will clear student sessions and free up storage space.')) return;
+    try {
+      await axios.delete(`/api/rooms/${roomId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` }
+      });
+      fetchData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete room');
     }
   };
 
@@ -143,15 +155,23 @@ export default function RoomManager() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between">
+              <div className="mt-4 pt-3 border-t border-slate-200 flex items-center space-x-2">
                 <Link
                   to={`/admin/monitor/${r._id}`}
-                  className="px-4 py-2.5 bg-[#0E52FF] hover:bg-[#0642d9] text-white rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-2 transition-all w-full justify-center shadow-md"
+                  className="px-4 py-2.5 bg-[#0E52FF] hover:bg-[#0642d9] text-white rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-2 transition-all flex-1 justify-center shadow-md active:scale-[0.99]"
                 >
                   <Monitor className="w-4 h-4" />
                   <span>Open Live Invigilator Monitor</span>
                   <ArrowRight className="w-4 h-4 ml-1" />
                 </Link>
+
+                <button
+                  onClick={() => handleDeleteRoom(r._id)}
+                  className="p-2.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 rounded-lg transition-all shadow-sm"
+                  title="Delete Exam Room & Free Storage Space"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-700" />
+                </button>
               </div>
             </div>
           ))}

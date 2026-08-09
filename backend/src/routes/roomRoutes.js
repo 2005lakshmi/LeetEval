@@ -331,4 +331,27 @@ router.post('/:id/reopen/:sessionId', async (req, res) => {
   }
 });
 
+// Delete Room & cleanup related student sessions
+router.delete('/:id', async (req, res) => {
+  try {
+    const room = await Room.findById(req.params.id);
+    if (!room) return res.status(404).json({ message: 'Exam room not found' });
+
+    await StudentSession.deleteMany({ roomId: room._id });
+    await Room.findByIdAndDelete(req.params.id);
+
+    await AuditLog.create({
+      actorId: req.user._id,
+      actorType: req.user.role,
+      action: 'DELETE_EXAM_ROOM',
+      targetId: String(room._id),
+      meta: { roomCode: room.roomCode }
+    });
+
+    res.json({ message: 'Exam room and related sessions deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
