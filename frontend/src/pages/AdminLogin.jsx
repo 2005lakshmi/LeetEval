@@ -16,7 +16,7 @@ export default function AdminLogin({ onLoginSuccess }) {
     setLoading(true);
 
     try {
-      const response = await axios.post('/api/auth/login', formData);
+      const response = await axios.post('/api/auth/login', { email: formData.email.trim(), password: formData.password });
       const { token, user } = response.data;
       localStorage.setItem('adminToken', token);
       onLoginSuccess(user);

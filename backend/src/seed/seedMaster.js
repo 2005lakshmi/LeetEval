@@ -12,13 +12,13 @@ async function autoSeedMaster(
   masterName = process.env.MASTER_NAME || 'Master Administrator'
 ) {
   try {
-    const email = masterEmail.toLowerCase();
+    const email = masterEmail.toLowerCase().trim();
     let master = await UserAdmin.findOne({ email });
 
-    if (!master) {
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash(masterPassword, salt);
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(masterPassword, salt);
 
+    if (!master) {
       master = await UserAdmin.create({
         name: masterName,
         email,
@@ -28,7 +28,11 @@ async function autoSeedMaster(
       });
       console.log(`[Auto-Seed]: Created Master Admin account (${email})`);
     } else {
-      console.log(`[Auto-Seed]: Master Admin account verified (${email})`);
+      master.passwordHash = passwordHash;
+      master.role = 'master';
+      master.status = 'approved';
+      await master.save();
+      console.log(`[Auto-Seed]: Synced & Verified Master Admin password (${email})`);
     }
 
     // Seed Demo Question: Two Sum
@@ -96,7 +100,7 @@ async function autoSeedMaster(
       console.log('[Auto-Seed]: Created demo paper');
     }
 
-    console.log('[Auto-Seed]: Ready!');
+    console.log('[Auto-Seed]: Complete!');
   } catch (err) {
     console.error('[Auto-Seed Warning]:', err.message);
   }
