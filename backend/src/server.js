@@ -21,17 +21,14 @@ const submissionRoutes = require('./routes/submissionRoutes');
 const app = express();
 const server = http.createServer(app);
 
-// CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'];
+// Dynamic CORS configuration for 100% cross-origin compatibility
+const corsOptions = {
+  origin: (origin, callback) => callback(null, true),
+  credentials: true
+};
 
 const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
+  cors: corsOptions
 });
 
 // Attach io to app for access in route handlers
@@ -39,7 +36,7 @@ app.set('io', io);
 
 // Security Middlewares
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 

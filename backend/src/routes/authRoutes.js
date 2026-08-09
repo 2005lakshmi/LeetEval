@@ -8,6 +8,15 @@ const { verifyAdminToken } = require('../middleware/authMiddleware');
 
 const secretKey = process.env.JWT_SECRET || 'super_secret_jwt_key_leet_eval_2026_change_in_prod';
 
+// Login Info Endpoint (GET)
+router.get('/login', (req, res) => {
+  res.json({
+    message: 'Login is a POST endpoint. Send a POST request with JSON body { "email": "...", "password": "..." }.',
+    endpoint: '/api/auth/login',
+    method: 'POST'
+  });
+});
+
 // Login (Faculty & Master)
 router.post('/login', async (req, res) => {
   try {
