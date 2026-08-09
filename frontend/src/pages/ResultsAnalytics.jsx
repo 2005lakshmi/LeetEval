@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { BarChart3, Code2, Eye, Trophy, Clock, Download, Printer, Filter, CheckCircle2, AlertTriangle, FileText, X } from 'lucide-react';
+import { BarChart3, Code2, Eye, Trophy, Clock, Download, Printer, Filter, CheckCircle2, AlertTriangle, FileText, X, CheckCircle, XCircle } from 'lucide-react';
 
 export default function ResultsAnalytics() {
   const { roomId } = useParams();
@@ -39,16 +39,33 @@ export default function ResultsAnalytics() {
     window.print();
   };
 
+  // Helper to extract or parse testResults array from submission
+  const getSubmissionTestResults = (sub) => {
+    if (Array.isArray(sub.testResults) && sub.testResults.length > 0) {
+      return sub.testResults;
+    }
+    if (sub.rawOutput && (sub.rawOutput.includes('testCase') || sub.rawOutput.includes('passed'))) {
+      try {
+        const matches = sub.rawOutput.match(/\[.*\]/s);
+        if (matches) {
+          const parsed = JSON.parse(matches[0]);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {}
+    }
+    return [];
+  };
+
   const renderTestcaseStatusBadge = (sub) => {
     const verdict = sub.verdict || 'Pending';
-    const testResults = Array.isArray(sub.testResults) ? sub.testResults : [];
-    const passedCount = sub.passedCount !== undefined ? sub.passedCount : testResults.filter(t => t && t.passed).length;
-    const totalCount = sub.totalCount !== undefined ? sub.totalCount : testResults.length;
+    const testResults = getSubmissionTestResults(sub);
+    const passedCount = testResults.filter(t => t && t.passed).length;
+    const totalCount = testResults.length;
 
     if (verdict === 'Runtime Error') {
       return (
         <span className="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-rose-100 text-rose-800 border border-rose-300">
-          Runtime Error (Execution Failed)
+          Runtime Error
         </span>
       );
     }
@@ -56,7 +73,7 @@ export default function ResultsAnalytics() {
     if (verdict === 'Compilation Error') {
       return (
         <span className="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-rose-100 text-rose-800 border border-rose-300">
-          Compilation Error (Build Failed)
+          Compilation Error
         </span>
       );
     }
@@ -84,6 +101,97 @@ export default function ResultsAnalytics() {
       <span className="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-slate-100 text-slate-700 border border-slate-300">
         {verdict}
       </span>
+    );
+  };
+
+  // Render Pretty-Printed Individual Testcases Cards matching user screenshot
+  const renderPrettyTestcaseResultsList = (sub) => {
+    const testResults = getSubmissionTestResults(sub);
+    const verdict = sub.verdict || 'Wrong Answer';
+    const isAccepted = verdict === 'Accepted';
+
+    if (testResults.length > 0) {
+      const passedCount = testResults.filter(t => t && t.passed).length;
+      const totalCount = testResults.length;
+
+      return (
+        <div className="space-y-3 font-mono">
+          {/* Header Pill matching screenshot */}
+          <div className="flex items-center space-x-2">
+            <span className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-200 border border-slate-700">
+              Testcase
+            </span>
+            <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
+              isAccepted 
+                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' 
+                : 'bg-rose-100 text-rose-800 border border-rose-300'
+            }`}>
+              Test Result ({verdict}) • {passedCount}/{totalCount} Passed
+            </span>
+          </div>
+
+          {/* List of Individual Testcase Cards matching user screenshot */}
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            {testResults.map((tc, idx) => {
+              const indexNum = tc.testIndex || tc.testCase || (idx + 1);
+              const passed = Boolean(tc.passed);
+              const errorMsg = tc.error || '';
+              const runtimeVal = tc.runtimeMs !== undefined ? tc.runtimeMs : (tc.runtime !== undefined ? tc.runtime : 0);
+
+              return (
+                <div 
+                  key={idx}
+                  className={`p-3.5 rounded-xl border text-xs flex flex-col justify-between transition-all ${
+                    passed 
+                      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' 
+                      : 'bg-rose-50/80 border-rose-200 text-rose-950'
+                  }`}
+                >
+                  <div className="flex items-center justify-between font-bold">
+                    <div className="flex items-center space-x-2">
+                      {passed ? (
+                        <span className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center text-[10px] font-bold border border-emerald-300">
+                          ✓
+                        </span>
+                      ) : (
+                        <span className="w-5 h-5 rounded-full bg-rose-200 text-rose-800 flex items-center justify-center text-[10px] font-bold border border-rose-300">
+                          ✕
+                        </span>
+                      )}
+                      <span className="text-[#111111] text-sm font-extrabold">Testcase {indexNum}</span>
+                    </div>
+                    <span className="text-[#555555] font-mono text-[11px] font-bold">{runtimeVal}ms</span>
+                  </div>
+
+                  {/* Red Error Message matching screenshot */}
+                  {!passed && errorMsg && (
+                    <div className="mt-2 text-rose-700 font-mono text-xs pl-7 font-bold whitespace-pre-wrap">
+                      '{errorMsg}'
+                    </div>
+                  )}
+
+                  {!passed && !errorMsg && (tc.expected || tc.expectedOutput || tc.output || tc.actualOutput) && (
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] font-mono pl-7">
+                      {(tc.expected || tc.expectedOutput) && <div className="text-slate-600">Expected: <span className="text-emerald-700 font-bold">{tc.expected || tc.expectedOutput}</span></div>}
+                      {(tc.output || tc.actualOutput) && <div className="text-slate-600 font-bold">Actual: <span className="text-rose-700">{tc.output || tc.actualOutput}</span></div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback for Raw Error / Output
+    return (
+      <div className="space-y-1.5 font-mono text-xs">
+        <div className="text-[#555555] font-bold uppercase text-[11px]">Raw Console Output & Log:</div>
+        <pre className="p-3 bg-slate-900 text-slate-200 font-mono text-xs rounded-lg max-h-36 overflow-y-auto whitespace-pre-wrap">
+          {sub.rawOutput || 'Execution completed.'}
+        </pre>
+      </div>
     );
   };
 
@@ -121,7 +229,7 @@ export default function ResultsAnalytics() {
                 <BarChart3 className="w-6 h-6 text-[#0E52FF]" />
               </div>
               <h1 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight">
-                Exam Submissions & Real Testcase Results
+                Exam Submissions & Testcase Results
               </h1>
             </div>
             <p className="text-sm text-[#111111] font-semibold leading-relaxed max-w-3xl">
@@ -145,7 +253,7 @@ export default function ResultsAnalytics() {
           <div className="flex items-center justify-between">
             <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111] flex items-center gap-2">
               <FileText className="w-5 h-5 text-[#0E52FF]" />
-              <span>Candidate Submissions & Execution Log</span>
+              <span>Candidate Submissions & Testcase Results Log</span>
             </h2>
             <span className="text-xs font-mono font-bold text-[#555555]">Total Submissions: {submissions.length}</span>
           </div>
@@ -199,7 +307,7 @@ export default function ResultsAnalytics() {
           </div>
         </div>
 
-        {/* View Code & Console Output Modal (Hidden when printing) */}
+        {/* View Code & Pretty-Printed Testcase Modal (Hidden when printing) */}
         {viewCodeModal && (
           <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 print:hidden">
             <div className="bg-white/95 backdrop-blur-xl p-6 rounded-xl max-w-3xl w-full border border-white shadow-2xl flex flex-col max-h-[85vh] text-[#111111]">
@@ -221,7 +329,7 @@ export default function ResultsAnalytics() {
               </div>
 
               {/* Code Editor Preview */}
-              <div className="flex-1 overflow-hidden h-64 rounded-lg border border-slate-200">
+              <div className="flex-1 overflow-hidden h-56 rounded-lg border border-slate-200">
                 <CodeEditor
                   value={viewCodeModal.code}
                   language={viewCodeModal.language}
@@ -229,12 +337,9 @@ export default function ResultsAnalytics() {
                 />
               </div>
 
-              {/* Console Raw Output */}
+              {/* Pretty-Printed Testcases List matching User Screenshot */}
               <div className="mt-3 pt-3 border-t border-slate-200">
-                <div className="text-xs font-mono font-bold uppercase text-[#555555] mb-1">Raw Console Output & Execution Details:</div>
-                <pre className="p-3 bg-slate-900 text-slate-200 font-mono text-xs rounded-lg max-h-32 overflow-y-auto whitespace-pre-wrap">
-                  {viewCodeModal.rawOutput || 'Execution completed with no console output.'}
-                </pre>
+                {renderPrettyTestcaseResultsList(viewCodeModal)}
               </div>
             </div>
           </div>
@@ -276,7 +381,7 @@ export default function ResultsAnalytics() {
 
               {/* Candidates Summary Table */}
               <div className="space-y-2">
-                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#111111]">Candidate Real Testcase Results</h3>
+                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#111111]">Candidate Testcase Results Breakdown</h3>
                 <table className="w-full text-left text-xs border border-slate-300">
                   <thead className="bg-slate-100 uppercase font-mono font-bold border-b border-slate-300">
                     <tr>
@@ -285,7 +390,7 @@ export default function ResultsAnalytics() {
                       <th className="p-2.5 border-r border-slate-300">Question</th>
                       <th className="p-2.5 border-r border-slate-300">Language</th>
                       <th className="p-2.5 border-r border-slate-300">Verdict</th>
-                      <th className="p-2.5">Real Testcase Results</th>
+                      <th className="p-2.5">Testcase Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-mono text-xs">
@@ -303,11 +408,11 @@ export default function ResultsAnalytics() {
                 </table>
               </div>
 
-              {/* Pretty-Printed Candidate Solution & Console Output Log */}
-              <div className="space-y-4 pt-4 border-t border-slate-200">
-                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#111111]">Pretty-Printed Code & Console Execution Log</h3>
+              {/* Pretty-Printed Candidate Solution & Individual Testcases Log matching User Screenshot */}
+              <div className="space-y-6 pt-4 border-t border-slate-200">
+                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#111111]">Pretty-Printed Code & Individual Testcases Log</h3>
                 {submissions.map((sub, idx) => (
-                  <div key={sub._id} className="p-4 rounded-lg border border-slate-300 bg-slate-50 space-y-2 font-mono text-xs page-break-inside-avoid">
+                  <div key={sub._id} className="p-5 rounded-lg border border-slate-300 bg-slate-50 space-y-4 font-mono text-xs page-break-inside-avoid">
                     <div className="flex justify-between items-center font-bold border-b border-slate-200 pb-2">
                       <span>{idx + 1}. Candidate: {sub.studentName} ({sub.usn})</span>
                       <span className="text-[#0E52FF]">{sub.questionTitle} [{sub.language.toUpperCase()}]</span>
@@ -319,10 +424,8 @@ export default function ResultsAnalytics() {
                       </pre>
                     </div>
                     <div>
-                      <div className="text-[10px] font-bold text-[#555555] uppercase mb-1">Console Output Log:</div>
-                      <pre className="p-2.5 bg-slate-200 text-slate-900 font-mono text-xs rounded border border-slate-300">
-                        {sub.rawOutput || 'Execution completed with no console output.'}
-                      </pre>
+                      <div className="text-[10px] font-bold text-[#555555] uppercase mb-2">Individual Testcases Execution Details:</div>
+                      {renderPrettyTestcaseResultsList(sub)}
                     </div>
                   </div>
                 ))}
