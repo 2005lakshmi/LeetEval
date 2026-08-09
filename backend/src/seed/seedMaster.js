@@ -6,31 +6,29 @@ const UserAdmin = require('../models/UserAdmin');
 const Question = require('../models/Question');
 const Paper = require('../models/Paper');
 
-async function seed() {
+async function autoSeedMaster(
+  masterEmail = process.env.MASTER_EMAIL || 'master@platform.com',
+  masterPassword = process.env.MASTER_PASSWORD || 'Master@123456',
+  masterName = process.env.MASTER_NAME || 'Master Administrator'
+) {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/leet_eval';
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 });
-    console.log('[Seed]: Connected to MongoDB');
+    const email = masterEmail.toLowerCase();
+    let master = await UserAdmin.findOne({ email });
 
-    const masterEmail = (process.env.MASTER_EMAIL || 'master@platform.com').toLowerCase();
-    const masterPassword = process.env.MASTER_PASSWORD || 'Master@123456';
-    const masterName = process.env.MASTER_NAME || 'Master Administrator';
-
-    let master = await UserAdmin.findOne({ email: masterEmail });
     if (!master) {
       const salt = await bcrypt.genSalt(10);
       const passwordHash = await bcrypt.hash(masterPassword, salt);
 
       master = await UserAdmin.create({
         name: masterName,
-        email: masterEmail,
+        email,
         passwordHash,
         role: 'master',
         status: 'approved'
       });
-      console.log(`[Seed]: Created Master Admin account (${masterEmail})`);
+      console.log(`[Auto-Seed]: Created Master Admin account (${email})`);
     } else {
-      console.log(`[Seed]: Master Admin already exists (${masterEmail})`);
+      console.log(`[Auto-Seed]: Master Admin account verified (${email})`);
     }
 
     // Seed Demo Question: Two Sum
@@ -56,7 +54,7 @@ async function seed() {
         referenceSolutionVerified: true,
         createdBy: master._id
       });
-      console.log('[Seed]: Created demo question "Two Sum"');
+      console.log('[Auto-Seed]: Created demo question "Two Sum"');
     }
 
     // Seed Demo Question: Palindrome Number
@@ -82,7 +80,7 @@ async function seed() {
         referenceSolutionVerified: true,
         createdBy: master._id
       });
-      console.log('[Seed]: Created demo question "Palindrome Number"');
+      console.log('[Auto-Seed]: Created demo question "Palindrome Number"');
     }
 
     // Seed Demo Paper
@@ -95,15 +93,20 @@ async function seed() {
         orderingMode: 'fixed',
         timeLimitMinutes: 45
       });
-      console.log('[Seed]: Created demo paper');
+      console.log('[Auto-Seed]: Created demo paper');
     }
 
-    console.log('[Seed]: Complete!');
-    process.exit(0);
+    console.log('[Auto-Seed]: Ready!');
   } catch (err) {
-    console.error('[Seed Error]:', err);
-    process.exit(1);
+    console.error('[Auto-Seed Warning]:', err.message);
   }
 }
 
-seed();
+if (require.main === module) {
+  const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/leet_eval';
+  mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 5000 }).then(() => {
+    autoSeedMaster().then(() => process.exit(0));
+  });
+}
+
+module.exports = { autoSeedMaster };

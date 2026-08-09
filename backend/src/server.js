@@ -82,9 +82,12 @@ app.get('/health', (req, res) => {
 setupSocketHandlers(io);
 initQueue(io);
 
+const { autoSeedMaster } = require('./seed/seedMaster');
+
 // Start Server
 const PORT = process.env.PORT || 5000;
-connectDB().then(() => {
+connectDB().then(async () => {
+  await autoSeedMaster();
   server.listen(PORT, () => {
     console.log(`=======================================================`);
     console.log(`🚀 [Coding Assessment Platform API Server Running]`);
