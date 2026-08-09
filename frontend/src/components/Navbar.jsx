@@ -20,37 +20,35 @@ export default function Navbar({ user, onLogout }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Logo & Back Button */}
-          <div className="flex items-center space-x-4">
-            <div className="flex flex-col">
-              <Link to="/admin/dashboard" className="flex items-center space-x-2">
-                <div className="p-1.5 rounded-lg bg-[#0E52FF]/10 text-[#0E52FF] border border-[#0E52FF]/20 shadow-sm">
-                  <Code2 className="w-5 h-5 text-[#0E52FF]" />
-                </div>
-                <span className="text-xl font-bold tracking-tight text-[#111111] font-['Playfair_Display',serif]">
-                  Leet<span className="text-[#0E52FF]">Eval</span>
-                </span>
-              </Link>
-              
-              {/* Clean Back Button directly below LeetEval Logo */}
-              <button
-                onClick={() => navigate(-1)}
-                className="mt-0.5 inline-flex items-center space-x-1 text-xs font-mono font-bold text-[#313131] hover:text-[#0E52FF] transition-colors self-start"
-                title="Go Back to Previous Page"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-[#0E52FF]" />
-                <span>Back</span>
-              </button>
-            </div>
+          {/* Logo & Dedicated Back Button */}
+          <div className="flex items-center space-x-3">
+            <Link to="/admin/dashboard" className="flex items-center space-x-2">
+              <div className="p-1.5 rounded-lg bg-[#0E52FF]/10 text-[#0E52FF] border border-[#0E52FF]/20 shadow-sm">
+                <Code2 className="w-5 h-5 text-[#0E52FF]" />
+              </div>
+              <span className="text-xl font-bold tracking-tight text-[#111111] font-['Playfair_Display',serif]">
+                Leet<span className="text-[#0E52FF]">Eval</span>
+              </span>
+            </Link>
+
+            {/* Clean Back Button on Left Side */}
+            <button
+              onClick={() => navigate(-1)}
+              className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider text-[#313131] hover:text-[#0E52FF] hover:bg-slate-100 border border-slate-200 transition-all flex items-center space-x-1.5 shadow-sm active:scale-[0.98]"
+              title="Go Back to Previous Page"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#0E52FF]" />
+              <span>Back</span>
+            </button>
 
             {user.role === 'master' && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-purple-100 text-purple-900 border border-purple-300 flex items-center space-x-1">
+              <span className="hidden sm:flex px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-purple-100 text-purple-900 border border-purple-300 items-center space-x-1">
                 <ShieldCheck className="w-3.5 h-3.5 text-purple-700" />
                 <span>Master Superuser</span>
               </span>
             )}
             {user.role === 'faculty' && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+              <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
                 Faculty Admin
               </span>
             )}
