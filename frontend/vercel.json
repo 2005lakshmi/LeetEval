@@ -11,6 +11,10 @@
     {
       "source": "/health",
       "destination": "https://leeteval.onrender.com/health"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
