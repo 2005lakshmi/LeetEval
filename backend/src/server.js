@@ -63,7 +63,17 @@ app.use('/api/rooms', roomRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/submissions', submissionRoutes);
 
-// Health Check
+// Root Status & Health Check
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ONLINE',
+    message: '🚀 LeetEval Multi-Language Assessment Platform Backend API Server is Live & Operational',
+    version: '1.0.0',
+    healthCheck: '/health',
+    timestamp: new Date()
+  });
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date(), uptime: process.uptime() });
 });
