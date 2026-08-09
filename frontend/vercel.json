@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://leeteval.onrender.com/api/:path*"
+    },
+    {
+      "source": "/socket.io/:path*",
+      "destination": "https://leeteval.onrender.com/socket.io/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://leeteval.onrender.com/health"
+    }
+  ]
+}

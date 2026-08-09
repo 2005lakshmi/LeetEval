@@ -17,6 +17,10 @@ import LiveMonitor from './pages/LiveMonitor';
 import ResultsAnalytics from './pages/ResultsAnalytics';
 import MasterDashboard from './pages/MasterDashboard';
 
+if (import.meta.env.VITE_API_BASE_URL) {
+  axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL;
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
