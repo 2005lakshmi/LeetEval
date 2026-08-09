@@ -287,48 +287,39 @@ async function executeViaPiston(language, wrappedCode) {
 }
 
 /**
- * Execute code via Judge0 API, Local CLI Compilers, or Cloud Piston Engine
+ * Execute code via Self-Contained Docker Compilers (Python, Node.js, GCC, G++, OpenJDK) or Judge0 API
  */
 async function executeCode({ language, code, customTemplate = null, testcases, timeLimitMs = 2000, memoryLimitMb = 256 }) {
-  const judge0Url = process.env.JUDGE0_API_URL || 'http://127.0.0.1:2358';
-  const langId = JUDGE0_LANG_IDS[language.toLowerCase()] || 71;
+  const judge0Url = process.env.JUDGE0_API_URL;
   const wrappedCode = generateHarness(language, code, testcases, 'solution', customTemplate);
 
-  // 1. Try Judge0 Endpoint
-  try {
-    const response = await axios.post(`${judge0Url}/submissions?wait=true`, {
-      source_code: wrappedCode,
-      language_id: langId,
-      cpu_time_limit: timeLimitMs / 1000,
-      memory_limit: memoryLimitMb * 1024
-    }, { timeout: 3500 });
+  // 1. If Judge0 API is explicitly provided in env, call Judge0
+  if (judge0Url) {
+    try {
+      const langId = JUDGE0_LANG_IDS[language.toLowerCase()] || 71;
+      const response = await axios.post(`${judge0Url}/submissions?wait=true`, {
+        source_code: wrappedCode,
+        language_id: langId,
+        cpu_time_limit: timeLimitMs / 1000,
+        memory_limit: memoryLimitMb * 1024
+      }, { timeout: 3500 });
 
-    const data = response.data;
-    const stdout = data.stdout || '';
-    const stderr = data.stderr || data.compile_output || '';
+      const data = response.data;
+      const stdout = data.stdout || '';
+      const stderr = data.stderr || data.compile_output || '';
 
-    const parsedRes = parseResultsOutput(stdout, stderr);
-    if (parsedRes && stdout.includes('__RESULTS__')) {
-      parsedRes.maxMemoryKb = data.memory || 0;
-      return parsedRes;
+      const parsedRes = parseResultsOutput(stdout, stderr);
+      if (parsedRes && stdout.includes('__RESULTS__')) {
+        parsedRes.maxMemoryKb = data.memory || 0;
+        return parsedRes;
+      }
+    } catch (err) {
+      console.log(`[Judge0 Notice]: ${err.message}. Routing to self-contained container compilers.`);
     }
-
-    if (data.status?.id === 5) {
-      return { verdict: 'Time Limit Exceeded', testResults: [], rawOutput: 'Time Limit Exceeded', totalRuntimeMs: timeLimitMs };
-    } else if (data.status?.id === 6) {
-      return { verdict: 'Compilation Error', testResults: [{ testIndex: 0, passed: false, error: stderr }], rawOutput: stderr };
-    } else if (data.status?.id >= 7) {
-      return { verdict: 'Runtime Error', testResults: [{ testIndex: 0, passed: false, error: stderr || stdout }], rawOutput: stderr || stdout };
-    }
-
-    return await fallbackEvaluate(language, code, testcases, customTemplate);
-  } catch (error) {
-    // 2. Try Piston Cloud Engine or Native CLI
-    const cloudRes = await executeViaPiston(language, wrappedCode);
-    if (cloudRes) return cloudRes;
-
-    return await fallbackEvaluate(language, code, testcases, customTemplate);
   }
+
+  // 2. Native Self-Contained Local Execution Pipeline (Python, JavaScript, C, C++, Java)
+  return await fallbackEvaluate(language, code, testcases, customTemplate);
 }
 
 module.exports = { executeCode };
