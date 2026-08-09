@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Code2, ShieldAlert, FileText, Monitor, BarChart3, LogOut, UserCheck, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Code2, ShieldAlert, FileText, Monitor, BarChart3, LogOut, UserCheck, ShieldCheck } from 'lucide-react';
 
 export default function Navbar({ user, onLogout }) {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ export default function Navbar({ user, onLogout }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Logo & Dedicated Back Button */}
+          {/* Logo */}
           <div className="flex items-center space-x-3">
             <Link to="/admin/dashboard" className="flex items-center space-x-2">
               <div className="p-1.5 rounded-lg bg-[#0E52FF]/10 text-[#0E52FF] border border-[#0E52FF]/20 shadow-sm">
@@ -30,16 +30,6 @@ export default function Navbar({ user, onLogout }) {
                 Leet<span className="text-[#0E52FF]">Eval</span>
               </span>
             </Link>
-
-            {/* Clean Back Button on Left Side */}
-            <button
-              onClick={() => navigate(-1)}
-              className="px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider text-[#313131] hover:text-[#0E52FF] hover:bg-slate-100 border border-slate-200 transition-all flex items-center space-x-1.5 shadow-sm active:scale-[0.98]"
-              title="Go Back to Previous Page"
-            >
-              <ArrowLeft className="w-4 h-4 text-[#0E52FF]" />
-              <span>Back</span>
-            </button>
 
             {user.role === 'master' && (
               <span className="hidden sm:flex px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-purple-100 text-purple-900 border border-purple-300 items-center space-x-1">

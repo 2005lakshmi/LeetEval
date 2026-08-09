@@ -192,29 +192,16 @@ export default function LiveMonitor() {
         
         {/* Top Banner in Luminous Light Glass Card */}
         <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center space-x-4">
-            
-            {/* BACK button positioned cleanly to the left side of the Live Exam Monitor title block */}
-            <button
-              onClick={() => navigate(-1)}
-              className="px-3.5 py-2 rounded-lg bg-white hover:bg-slate-100 text-[#313131] hover:text-[#0E52FF] border border-slate-200 text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1.5 transition-all shadow-sm active:scale-[0.98] flex-shrink-0"
-              title="Go Back"
-            >
-              <ArrowLeft className="w-4 h-4 text-[#0E52FF]" />
-              <span>BACK</span>
-            </button>
-
-            <div>
-              <div className="flex items-center space-x-3">
-                <h1 className="font-['Playfair_Display',serif] text-3xl font-extrabold text-[#111111]">Live Exam Monitor</h1>
-                <span className="font-mono text-xl font-extrabold px-3 py-1 bg-[#0E52FF]/10 text-[#0E52FF] border border-[#0E52FF]/30 rounded-lg">
-                  {roomData.roomCode}
-                </span>
-              </div>
-              <p className="text-xs text-[#313131] mt-1 font-semibold">
-                Paper: <strong className="text-[#111111]">{roomData.paperId?.title}</strong> • Warning Limit: <strong className="text-[#C51F02]">{roomData.warningLimit}</strong> • Tab Switch Limit: <strong className="text-[#C51F02]">{roomData.tabSwitchLimit || 3}</strong>
-              </p>
+          <div>
+            <div className="flex items-center space-x-3">
+              <h1 className="font-['Playfair_Display',serif] text-3xl font-extrabold text-[#111111]">Live Exam Monitor</h1>
+              <span className="font-mono text-xl font-extrabold px-3 py-1 bg-[#0E52FF]/10 text-[#0E52FF] border border-[#0E52FF]/30 rounded-lg">
+                {roomData.roomCode}
+              </span>
             </div>
+            <p className="text-xs text-[#313131] mt-1 font-semibold">
+              Paper: <strong className="text-[#111111]">{roomData.paperId?.title}</strong> • Warning Limit: <strong className="text-[#C51F02]">{roomData.warningLimit}</strong> • Tab Switch Limit: <strong className="text-[#C51F02]">{roomData.tabSwitchLimit || 3}</strong>
+            </p>
           </div>
 
           <div className="flex items-center space-x-3">
