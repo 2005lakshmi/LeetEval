@@ -4,7 +4,7 @@ const Submission = require('../models/Submission');
 const StudentSession = require('../models/StudentSession');
 const { verifyAdminToken } = require('../middleware/authMiddleware');
 
-// Get Runtime Analytics Distribution for a Question in a Room
+// Get Testcases Analytics Distribution for a Question in a Room
 router.get('/analytics/question/:questionId/room/:roomId', verifyAdminToken, async (req, res) => {
   try {
     const { questionId, roomId } = req.params;
@@ -16,21 +16,27 @@ router.get('/analytics/question/:questionId/room/:roomId', verifyAdminToken, asy
     const sessionMap = new Map();
     sessions.forEach(s => sessionMap.set(String(s._id), { name: s.name, usn: s.usn }));
 
-    // Fetch accepted submissions for this question
+    // Fetch submissions for this question
     const submissions = await Submission.find({
       questionId,
       sessionId: { $in: sessionIds },
-      verdict: 'Accepted',
       type: 'submit'
-    }).sort({ totalRuntimeMs: 1 });
+    }).sort({ submittedAt: -1 });
 
     const chartData = submissions.map(sub => {
       const student = sessionMap.get(String(sub.sessionId)) || { name: 'Unknown', usn: '' };
+      const testResults = Array.isArray(sub.testResults) ? sub.testResults : [];
+      const passedCount = testResults.filter(t => t && t.passed).length;
+      const totalCount = testResults.length;
+
       return {
         submissionId: sub._id,
         sessionId: sub.sessionId,
         studentName: student.name,
         usn: student.usn,
+        passedCount,
+        totalCount,
+        verdict: sub.verdict,
         runtimeMs: sub.totalRuntimeMs || 0,
         language: sub.language,
         submittedAt: sub.submittedAt
@@ -39,7 +45,7 @@ router.get('/analytics/question/:questionId/room/:roomId', verifyAdminToken, asy
 
     res.json({
       questionId,
-      totalAccepted: chartData.length,
+      totalSubmissions: chartData.length,
       chartData
     });
   } catch (err) {
@@ -62,6 +68,10 @@ router.get('/room/:roomId', verifyAdminToken, async (req, res) => {
 
     const formatted = submissions.map(sub => {
       const student = sessionMap.get(String(sub.sessionId)) || { name: 'Unknown', usn: '' };
+      const testResults = Array.isArray(sub.testResults) ? sub.testResults : [];
+      const passedCount = testResults.filter(t => t && t.passed).length;
+      const totalCount = testResults.length;
+
       return {
         _id: sub._id,
         studentName: student.name,
@@ -71,7 +81,11 @@ router.get('/room/:roomId', verifyAdminToken, async (req, res) => {
         verdict: sub.verdict,
         totalRuntimeMs: sub.totalRuntimeMs,
         submittedAt: sub.submittedAt,
-        code: sub.code
+        code: sub.code,
+        rawOutput: sub.rawOutput,
+        testResults,
+        passedCount,
+        totalCount
       };
     });
 

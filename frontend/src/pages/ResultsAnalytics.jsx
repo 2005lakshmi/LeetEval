@@ -12,7 +12,7 @@ export default function ResultsAnalytics() {
   const [roomData, setRoomData] = useState(null);
   const [selectedQuestionId, setSelectedQuestionId] = useState('');
   const [chartData, setChartData] = useState([]);
-  const [filter100PercentOnly, setFilter100PercentOnly] = useState(true);
+  const [filter100PercentOnly, setFilter100PercentOnly] = useState(false);
 
   const [viewCodeModal, setViewCodeModal] = useState(null);
   const [showPrintReportModal, setShowPrintReportModal] = useState(false);
@@ -72,9 +72,9 @@ export default function ResultsAnalytics() {
       return (
         <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs shadow-xl space-y-1 text-[#111111] font-mono">
           <div className="font-bold text-[#111111]">{data.studentName} ({data.usn})</div>
-          <div className="text-[#0E52FF] font-bold">Runtime: {data.runtimeMs} ms</div>
+          <div className="text-[#0E52FF] font-bold">Passed Testcases: {data.passedCount} / {data.totalCount}</div>
+          <div className="text-[#555555]">Verdict: {data.verdict}</div>
           <div className="text-[#555555]">Language: {data.language}</div>
-          <div className="text-emerald-700 font-bold">✓ 100% Testcases Passed</div>
         </div>
       );
     }
@@ -87,9 +87,9 @@ export default function ResultsAnalytics() {
 
   const questions = roomData.paperId?.questionIds || [];
   
-  // Filter bar chart to ONLY show candidates who have 100% passed testcases
-  const filteredChartData = filter100PercentOnly
-    ? chartData.filter((sub) => sub.runtimeMs > 0)
+  // Filter bar chart for 100% testcase completers if toggle active
+  const displayedChartData = filter100PercentOnly
+    ? chartData.filter((sub) => sub.passedCount > 0 && sub.passedCount === sub.totalCount)
     : chartData;
 
   return (
@@ -122,7 +122,7 @@ export default function ResultsAnalytics() {
                 <BarChart3 className="w-6 h-6 text-[#0E52FF]" />
               </div>
               <h1 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight">
-                Results & Performance Analytics
+                Results & Testcases Performance Analytics
               </h1>
             </div>
             <p className="text-sm text-[#111111] font-semibold leading-relaxed max-w-3xl">
@@ -141,50 +141,63 @@ export default function ResultsAnalytics() {
           </div>
         </div>
 
-        {/* Question Performance Bar Chart (Filtered for 100% Testcases Passed) */}
+        {/* Real Testcases Passed Bar Chart */}
         <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-6 print:hidden">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111] flex items-center gap-2">
                 <Trophy className="w-5 h-5 text-amber-600" />
-                <span>100% Passed Candidates Performance Distribution (ms)</span>
+                <span>Candidate Passed Testcases Chart</span>
               </h2>
               <p className="text-xs text-[#555555] font-semibold mt-0.5">
-                Bar chart displays candidates who passed all required testcases for the selected problem.
+                Bar chart displays the exact number of passed testcases per candidate for the selected problem.
               </p>
             </div>
-            
-            <div className="flex items-center space-x-2 overflow-x-auto pb-1">
-              {questions.map((q) => (
-                <button
-                  key={q._id}
-                  onClick={() => handleSelectQuestion(q._id)}
-                  className={`px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase transition-all shadow-sm ${
-                    selectedQuestionId === q._id
-                      ? 'bg-[#0E52FF] text-white'
-                      : 'bg-white text-[#313131] border border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {q.title}
-                </button>
-              ))}
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setFilter100PercentOnly(!filter100PercentOnly)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase transition-all shadow-sm border ${
+                  filter100PercentOnly
+                    ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                    : 'bg-white text-[#313131] border-slate-200'
+                }`}
+              >
+                {filter100PercentOnly ? 'Showing 100% Passed Only ✓' : 'Filter 100% Passed Candidates'}
+              </button>
+
+              <div className="flex items-center space-x-1.5 overflow-x-auto pb-1">
+                {questions.map((q) => (
+                  <button
+                    key={q._id}
+                    onClick={() => handleSelectQuestion(q._id)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold uppercase transition-all shadow-sm ${
+                      selectedQuestionId === q._id
+                        ? 'bg-[#0E52FF] text-white'
+                        : 'bg-white text-[#313131] border border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {q.title}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Recharts Bar Chart */}
           <div className="h-72 w-full pt-4 bg-white/80 p-4 rounded-lg border border-slate-100 shadow-inner">
-            {filteredChartData.length === 0 ? (
+            {displayedChartData.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-[#555555] font-mono font-semibold">
-                No 100% passed submissions recorded yet for this question.
+                No submissions recorded yet for this question.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={filteredChartData}>
+                <BarChart data={displayedChartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="studentName" stroke="#334155" fontSize={11} fontWeight="bold" />
-                  <YAxis stroke="#334155" fontSize={11} unit="ms" fontWeight="bold" />
+                  <YAxis stroke="#334155" fontSize={11} allowDecimals={false} label={{ value: 'Passed Testcases', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fontSize: '11px', fontWeight: 'bold', fill: '#334155' } }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="runtimeMs" fill="#0E52FF" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="passedCount" fill="#0E52FF" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -196,7 +209,7 @@ export default function ResultsAnalytics() {
           <div className="flex items-center justify-between">
             <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111] flex items-center gap-2">
               <FileText className="w-5 h-5 text-[#0E52FF]" />
-              <span>Candidate Submissions & Passed Testcases Log</span>
+              <span>Raw Candidate Submissions & Testcase Results Log</span>
             </h2>
             <span className="text-xs font-mono font-bold text-[#555555]">Total Submissions: {submissions.length}</span>
           </div>
@@ -210,16 +223,16 @@ export default function ResultsAnalytics() {
                   <th className="p-3">Question</th>
                   <th className="p-3">Language</th>
                   <th className="p-3">Verdict</th>
-                  <th className="p-3">Testcases Passed</th>
+                  <th className="p-3">Real Testcases Passed</th>
                   <th className="p-3">Runtime</th>
                   <th className="p-3">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white font-medium">
                 {submissions.map((sub) => {
-                  const passedCount = sub.testResults ? sub.testResults.filter(t => t.passed).length : (sub.verdict === 'Accepted' ? 4 : 0);
-                  const totalCount = sub.testResults ? sub.testResults.length : 4;
-                  const is100Percent = sub.verdict === 'Accepted';
+                  const passedCount = sub.passedCount !== undefined ? sub.passedCount : (Array.isArray(sub.testResults) ? sub.testResults.filter(t => t && t.passed).length : 0);
+                  const totalCount = sub.totalCount !== undefined ? sub.totalCount : (Array.isArray(sub.testResults) ? sub.testResults.length : 0);
+                  const is100Percent = passedCount > 0 && passedCount === totalCount;
 
                   return (
                     <tr key={sub._id} className="hover:bg-slate-50 transition-colors">
@@ -229,14 +242,16 @@ export default function ResultsAnalytics() {
                       <td className="p-3 uppercase font-mono text-[#555555] font-bold">{sub.language}</td>
                       <td className="p-3">
                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-extrabold uppercase ${
-                          is100Percent ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                          is100Percent ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                          sub.verdict === 'Wrong Answer' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
                         }`}>
                           {sub.verdict}
                         </span>
                       </td>
                       <td className="p-3 font-mono">
                         <span className={`px-2.5 py-0.5 rounded text-xs font-bold ${
-                          is100Percent ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          is100Percent ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                          passedCount > 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
                         }`}>
                           {passedCount} / {totalCount} Passed {is100Percent ? '✓' : ''}
                         </span>
@@ -291,7 +306,7 @@ export default function ResultsAnalytics() {
 
               {/* Console Raw Output */}
               <div className="mt-3 pt-3 border-t border-slate-200">
-                <div className="text-xs font-mono font-bold uppercase text-[#555555] mb-1">Console Output & Testcase Summary:</div>
+                <div className="text-xs font-mono font-bold uppercase text-[#555555] mb-1">Raw Console Output & Execution Details:</div>
                 <pre className="p-3 bg-slate-900 text-slate-200 font-mono text-xs rounded-lg max-h-32 overflow-y-auto whitespace-pre-wrap">
                   {viewCodeModal.rawOutput || 'Execution completed with no console errors.'}
                 </pre>
@@ -336,22 +351,22 @@ export default function ResultsAnalytics() {
 
               {/* Candidates Summary Table */}
               <div className="space-y-2">
-                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#111111]">Candidate Results Breakdown</h3>
+                <h3 className="font-mono text-sm font-bold uppercase tracking-wider text-[#111111]">Candidate Raw Testcase Results</h3>
                 <table className="w-full text-left text-xs border border-slate-300">
                   <thead className="bg-slate-100 uppercase font-mono font-bold border-b border-slate-300">
                     <tr>
-                      <th className="p-2.5 border-r border-slate-300">Student Name</th>
+                      <th className="p-2.5 border-r border-slate-300">Candidate Name</th>
                       <th className="p-2.5 border-r border-slate-300">USN</th>
                       <th className="p-2.5 border-r border-slate-300">Question</th>
                       <th className="p-2.5 border-r border-slate-300">Language</th>
                       <th className="p-2.5 border-r border-slate-300">Verdict</th>
-                      <th className="p-2.5">Passed Testcases</th>
+                      <th className="p-2.5">Real Passed Testcases</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-mono text-xs">
                     {submissions.map((sub) => {
-                      const passedCount = sub.testResults ? sub.testResults.filter(t => t.passed).length : (sub.verdict === 'Accepted' ? 4 : 0);
-                      const totalCount = sub.testResults ? sub.testResults.length : 4;
+                      const passedCount = sub.passedCount !== undefined ? sub.passedCount : (Array.isArray(sub.testResults) ? sub.testResults.filter(t => t && t.passed).length : 0);
+                      const totalCount = sub.totalCount !== undefined ? sub.totalCount : (Array.isArray(sub.testResults) ? sub.testResults.length : 0);
                       return (
                         <tr key={sub._id}>
                           <td className="p-2.5 font-bold border-r border-slate-200">{sub.studentName}</td>
