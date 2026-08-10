@@ -1,14 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
-import { Plus, FileText, CheckCircle2, ShieldAlert, Trash2, Clock, Shuffle, Code2, CheckSquare } from 'lucide-react';
+import { Plus, FileText, CheckCircle2, ShieldAlert, Trash2, Clock, Shuffle, Code2, CheckSquare, Edit, Edit3 } from 'lucide-react';
 
 export default function PaperManager() {
   const [papers, setPapers] = useState([]);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingPaper, setEditingPaper] = useState(null);
 
+  // Form states
   const [title, setTitle] = useState('');
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(60);
   const [orderingMode, setOrderingMode] = useState('fixed');
@@ -44,6 +48,26 @@ export default function PaperManager() {
     }
   };
 
+  const handleOpenCreateModal = () => {
+    setTitle('');
+    setTimeLimitMinutes(60);
+    setOrderingMode('fixed');
+    setAllowedLanguages(['python', 'cpp', 'c', 'java', 'javascript']);
+    setSelectedQuestionIds([]);
+    setError('');
+    setShowCreateModal(true);
+  };
+
+  const handleOpenEditModal = (paper) => {
+    setEditingPaper(paper);
+    setTitle(paper.title || '');
+    setTimeLimitMinutes(paper.timeLimitMinutes || 60);
+    setOrderingMode(paper.orderingMode || 'fixed');
+    setAllowedLanguages(paper.allowedLanguages && paper.allowedLanguages.length > 0 ? paper.allowedLanguages : ['python', 'cpp', 'c', 'java', 'javascript']);
+    setSelectedQuestionIds((paper.questions || paper.questionIds || []).map(q => q._id || q));
+    setError('');
+  };
+
   const handleCreatePaper = async (e) => {
     e.preventDefault();
     setError('');
@@ -63,12 +87,35 @@ export default function PaperManager() {
         { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }
       );
       setShowCreateModal(false);
-      setTitle('');
-      setSelectedQuestionIds([]);
-      setAllowedLanguages(['python', 'cpp', 'c', 'java', 'javascript']);
       fetchData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create paper');
+    }
+  };
+
+  const handleSaveEditPaper = async (e) => {
+    e.preventDefault();
+    if (!editingPaper) return;
+    setError('');
+
+    if (selectedQuestionIds.length === 0) {
+      return setError('Please select at least one question');
+    }
+
+    if (allowedLanguages.length === 0) {
+      return setError('Please select at least one allowed programming language for students');
+    }
+
+    try {
+      await axios.put(
+        `/api/papers/${editingPaper._id}`,
+        { title, questionIds: selectedQuestionIds, orderingMode, timeLimitMinutes, allowedLanguages },
+        { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }
+      );
+      setEditingPaper(null);
+      fetchData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update paper');
     }
   };
 
@@ -134,12 +181,12 @@ export default function PaperManager() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight drop-shadow-sm">
-              Exam Papers & Language Restrictions
+              Exam Papers Management
             </h1>
-            <p className="text-sm text-[#111111] mt-1 font-semibold leading-relaxed">Assemble verified questions into structured exam papers and configure allowed programming languages</p>
+            <p className="text-sm text-[#111111] mt-1 font-semibold leading-relaxed">Assemble, edit, and configure exam papers, time limits, and allowed programming languages</p>
           </div>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={handleOpenCreateModal}
             className="px-4 py-2.5 bg-[#0E52FF] hover:bg-[#0642d9] text-white font-mono font-bold text-xs uppercase tracking-wider rounded-lg shadow-lg shadow-[#0E52FF]/30 flex items-center space-x-2 transition-all"
           >
             <Plus className="w-4 h-4" />
@@ -159,13 +206,23 @@ export default function PaperManager() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">{p.title}</h3>
-                    <button
-                      onClick={() => handleDeletePaper(p._id)}
-                      className="p-1.5 text-rose-600 hover:text-rose-800 rounded-lg hover:bg-rose-100 transition-all"
-                      title="Delete Paper"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => handleOpenEditModal(p)}
+                        className="px-3 py-1 bg-white hover:bg-slate-100 text-[#0E52FF] border border-[#0E52FF]/30 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1 shadow-sm transition-all"
+                        title="Edit Exam Paper"
+                      >
+                        <Edit className="w-3.5 h-3.5 text-[#0E52FF]" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDeletePaper(p._id)}
+                        className="p-1.5 text-rose-600 hover:text-rose-800 rounded-lg hover:bg-rose-100 transition-all"
+                        title="Delete Paper"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center space-x-3 text-xs text-[#313131] font-semibold mb-3">
@@ -216,7 +273,14 @@ export default function PaperManager() {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-200 flex justify-end">
+                <div className="mt-4 pt-3 border-t border-slate-200 flex justify-end space-x-2 font-mono text-xs">
+                  <button
+                    onClick={() => handleOpenEditModal(p)}
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-lg uppercase tracking-wider flex items-center space-x-1"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-[#0E52FF]" />
+                    <span>Edit Settings</span>
+                  </button>
                   <button
                     onClick={() => handleDeletePaper(p._id)}
                     className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
@@ -363,6 +427,146 @@ export default function PaperManager() {
                   className="px-5 py-2 bg-[#0E52FF] hover:bg-[#0642d9] text-white text-xs font-mono font-bold rounded-lg shadow-md uppercase tracking-wider"
                 >
                   Create Paper
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Paper Modal */}
+      {editingPaper && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-white shadow-2xl text-[#111111] space-y-4">
+            <h2 className="font-['Playfair_Display',serif] text-2xl font-extrabold text-[#111111]">Edit Exam Paper Settings</h2>
+            
+            {error && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono font-bold">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEditPaper} className="space-y-4 font-sans">
+              <div>
+                <label className="block text-xs font-mono font-bold text-[#111111] uppercase mb-1">Paper Title</label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Mid-Semester Coding Exam - CS201"
+                  className="w-full p-3 bg-white border border-[#E5E0D8] rounded-xl text-[#111111] font-mono text-xs font-bold focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#111111] uppercase mb-1">Time Limit (Minutes)</label>
+                  <input
+                    type="number"
+                    value={timeLimitMinutes}
+                    onChange={(e) => setTimeLimitMinutes(Number(e.target.value))}
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-xl text-[#111111] font-mono text-xs font-bold focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono font-bold text-[#111111] uppercase mb-1">Question Ordering</label>
+                  <select
+                    value={orderingMode}
+                    onChange={(e) => setOrderingMode(e.target.value)}
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-xl text-[#111111] font-mono text-xs font-bold focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                  >
+                    <option value="fixed">Fixed Order</option>
+                    <option value="random">Randomized Order</option>
+                    <option value="odd-even">Odd-Even Variant</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Select Allowed Programming Languages */}
+              <div className="space-y-2">
+                <label className="block text-xs font-mono font-bold text-[#111111] uppercase">
+                  Allowed Programming Languages (Select allowed for students):
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-xs">
+                  {allLangOptions.map((lang) => {
+                    const isChecked = allowedLanguages.includes(lang.id);
+                    return (
+                      <label
+                        key={lang.id}
+                        onClick={() => toggleLangOption(lang.id)}
+                        className={`p-2.5 rounded-lg border cursor-pointer flex items-center space-x-2 transition-all select-none ${
+                          isChecked 
+                            ? 'bg-[#0E52FF]/10 border-[#0E52FF] text-[#0E52FF] font-bold shadow-sm' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="rounded border-slate-300 text-[#0E52FF] focus:ring-0"
+                        />
+                        <span className="text-xs">{lang.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Select Verified Questions */}
+              <div className="space-y-2">
+                <label className="block text-xs font-mono font-bold text-[#111111] uppercase">
+                  Select Verified Questions:
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {questions.map((q) => {
+                    const isSelected = selectedQuestionIds.includes(q._id);
+                    return (
+                      <div
+                        key={q._id}
+                        onClick={() => toggleQuestionSelect(q)}
+                        className={`p-3 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
+                          isSelected
+                            ? 'bg-[#0E52FF]/10 border-[#0E52FF] text-[#0E52FF] font-bold'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            className="rounded border-slate-300 text-[#0E52FF] focus:ring-0"
+                          />
+                          <span className="font-bold">{q.title}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          {q.referenceSolutionVerified ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">Verified</span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300">Unverified</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setEditingPaper(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-mono font-bold rounded-lg hover:bg-slate-200 uppercase tracking-wider"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#0E52FF] hover:bg-[#0642d9] text-white text-xs font-mono font-bold rounded-lg shadow-md uppercase tracking-wider"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>
