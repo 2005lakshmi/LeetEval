@@ -1147,6 +1147,41 @@ export default function StudentExam() {
         </div>
       )}
 
+      {/* Forceful Fullscreen Requirement Overlay Modal */}
+      {!isFullscreen && (
+        <div className="fixed inset-0 z-50 bg-[#111111] text-[#FFFFFF] flex items-center justify-center p-4">
+          <GradFlow
+            config={{
+              color1: { r: 129, g: 135, b: 217 },
+              color2: { r: 232, g: 211, b: 207 },
+              color3: { r: 61, g: 110, b: 209 },
+              speed: 1,
+              scale: 2.1,
+              type: 'animated',
+              noise: 0.5
+            }}
+            className="fixed inset-0 w-full h-full pointer-events-none z-0"
+          />
+
+          <div className="relative z-10 bg-white/40 backdrop-blur-xl p-8 rounded-xl max-w-md w-full text-center border border-white/70 shadow-2xl space-y-5 text-[#111111]">
+            <div className="p-3.5 rounded-lg bg-white/95 text-[#0055ff] inline-flex shadow-xl">
+              <ShieldAlert className="w-10 h-10 text-[#0055ff]" />
+            </div>
+            <h2 className="font-['Playfair_Display',serif] text-2xl sm:text-3xl font-extrabold text-[#111111]">Full Screen Mode Required</h2>
+            <p className="text-xs text-[#313131] font-semibold leading-relaxed">
+              This proctored assessment portal requires full screen mode at all times. Please re-enter full screen mode to continue your exam.
+            </p>
+            <button
+              onClick={requestFullscreen}
+              className="w-full py-4 bg-[#0055ff] hover:bg-[#0044cc] text-white font-mono font-bold text-sm tracking-wider uppercase rounded-lg shadow-xl shadow-[#0055ff]/35 flex items-center justify-center space-x-2 transition-all active:scale-[0.99]"
+            >
+              <Maximize2 className="w-5 h-5" />
+              <span>RE-ENTER FULL SCREEN MODE</span>
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

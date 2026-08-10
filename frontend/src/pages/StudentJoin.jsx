@@ -39,13 +39,10 @@ export default function StudentJoin() {
         localStorage.setItem(`resume_${formData.roomCode.toUpperCase()}_${formData.usn.toUpperCase()}`, resumeToken);
       }
 
-      if (status === 'waiting') {
-        navigate(`/student/waiting/${sessionId}`, { state: { name: formData.name, usn: formData.usn, roomCode: formData.roomCode } });
-      } else if (['admitted', 'active'].includes(status)) {
-        navigate(`/student/exam/${sessionId}`);
-      } else {
-        setError(`Session status: ${status}. Please contact room admin.`);
-      }
+      // Always navigate to waiting room lobby first
+      navigate(`/student/waiting/${sessionId}`, { 
+        state: { name: formData.name, usn: formData.usn, roomCode: formData.roomCode, roomId: response.data.roomId } 
+      });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to join test room. Please check room code.');
     } finally {
