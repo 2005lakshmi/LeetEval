@@ -333,60 +333,134 @@ export default function MasterDashboard() {
           </div>
 
           <form onSubmit={handleRunMultiLangBenchmark} className="space-y-5">
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono">
-              <div>
-                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">C Runs</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={benchForm.cCount}
-                  onChange={(e) => setBenchForm({ ...benchForm, cCount: e.target.value })}
-                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* C Code Card */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-xs font-extrabold text-[#0E52FF] uppercase">C Language Benchmark</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={benchForm.cCount}
+                      onChange={(e) => setBenchForm({ ...benchForm, cCount: e.target.value })}
+                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                    />
+                  </div>
+                </div>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C Source Code Snippet:</label>
+                <textarea
+                  rows={4}
+                  value={benchForm.cCode}
+                  onChange={(e) => setBenchForm({ ...benchForm, cCode: e.target.value })}
+                  placeholder="Paste C code here..."
+                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">Python Runs</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={benchForm.pythonCount}
-                  onChange={(e) => setBenchForm({ ...benchForm, pythonCount: e.target.value })}
-                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+
+              {/* Python Code Card */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-xs font-extrabold text-amber-700 uppercase">Python Benchmark</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={benchForm.pythonCount}
+                      onChange={(e) => setBenchForm({ ...benchForm, pythonCount: e.target.value })}
+                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                    />
+                  </div>
+                </div>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Python Source Code Snippet:</label>
+                <textarea
+                  rows={4}
+                  value={benchForm.pythonCode}
+                  onChange={(e) => setBenchForm({ ...benchForm, pythonCode: e.target.value })}
+                  placeholder="Paste Python code here..."
+                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">Java Runs</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={benchForm.javaCount}
-                  onChange={(e) => setBenchForm({ ...benchForm, javaCount: e.target.value })}
-                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+
+              {/* Java Code Card */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-xs font-extrabold text-rose-700 uppercase">Java Benchmark</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={benchForm.javaCount}
+                      onChange={(e) => setBenchForm({ ...benchForm, javaCount: e.target.value })}
+                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                    />
+                  </div>
+                </div>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Java Source Code Snippet:</label>
+                <textarea
+                  rows={4}
+                  value={benchForm.javaCode}
+                  onChange={(e) => setBenchForm({ ...benchForm, javaCode: e.target.value })}
+                  placeholder="Paste Java code here..."
+                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">C++ Runs</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={benchForm.cppCount}
-                  onChange={(e) => setBenchForm({ ...benchForm, cppCount: e.target.value })}
-                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+
+              {/* C++ Code Card */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-xs font-extrabold text-purple-700 uppercase">C++ Benchmark</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={benchForm.cppCount}
+                      onChange={(e) => setBenchForm({ ...benchForm, cppCount: e.target.value })}
+                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                    />
+                  </div>
+                </div>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C++ Source Code Snippet:</label>
+                <textarea
+                  rows={4}
+                  value={benchForm.cppCode}
+                  onChange={(e) => setBenchForm({ ...benchForm, cppCode: e.target.value })}
+                  placeholder="Paste C++ code here..."
+                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">JS Runs</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="50"
-                  value={benchForm.jsCount}
-                  onChange={(e) => setBenchForm({ ...benchForm, jsCount: e.target.value })}
-                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+
+              {/* JavaScript Code Card */}
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-xs font-extrabold text-amber-600 uppercase">JavaScript Benchmark</span>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={benchForm.jsCount}
+                      onChange={(e) => setBenchForm({ ...benchForm, jsCount: e.target.value })}
+                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                    />
+                  </div>
+                </div>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">JS Source Code Snippet:</label>
+                <textarea
+                  rows={4}
+                  value={benchForm.jsCode}
+                  onChange={(e) => setBenchForm({ ...benchForm, jsCode: e.target.value })}
+                  placeholder="Paste JS code here..."
+                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
                 />
               </div>
             </div>
