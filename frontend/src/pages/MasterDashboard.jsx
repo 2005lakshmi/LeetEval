@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X, Copy } from 'lucide-react';
+import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X, Copy, GripHorizontal } from 'lucide-react';
 
 export default function MasterDashboard() {
   const [users, setUsers] = useState([]);
@@ -19,11 +19,19 @@ export default function MasterDashboard() {
   const [expandedLanguage, setExpandedLanguage] = useState(null); // 'c' | 'python' | 'java' | 'cpp' | 'js' | null
   const [selectedBenchmarkLog, setSelectedBenchmarkLog] = useState(null);
 
-  // Floating Minimizable / Maximizable Terminal Console State
+  // Floating Minimizable / Maximizable Draggable Terminal Console State
   const [showFloatingTerminal, setShowFloatingTerminal] = useState(false);
   const [isTerminalMinimized, setIsTerminalMinimized] = useState(false);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalLogs, setTerminalLogs] = useState([]);
+  
+  // Draggable position state
+  const [terminalPos, setTerminalPos] = useState({ 
+    x: typeof window !== 'undefined' ? Math.max(20, window.innerWidth - 620) : 100, 
+    y: typeof window !== 'undefined' ? Math.max(20, window.innerHeight - 380) : 100 
+  });
+  const [isDraggingTerminal, setIsDraggingTerminal] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   // Interactive Concurrency & Stress Simulation State
   const [studentInputCount, setStudentInputCount] = useState(60);
@@ -52,6 +60,38 @@ export default function MasterDashboard() {
     const interval = setInterval(fetchMasterData, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  // Draggable Terminal Global Event Listeners
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDraggingTerminal) return;
+      const newX = Math.max(10, Math.min(window.innerWidth - 250, e.clientX - dragOffset.current.x));
+      const newY = Math.max(10, Math.min(window.innerHeight - 80, e.clientY - dragOffset.current.y));
+      setTerminalPos({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingTerminal(false);
+    };
+
+    if (isDraggingTerminal) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingTerminal]);
+
+  const handleTerminalMouseDown = (e) => {
+    if (isTerminalMaximized) return;
+    setIsDraggingTerminal(true);
+    dragOffset.current = {
+      x: e.clientX - terminalPos.x,
+      y: e.clientY - terminalPos.y
+    };
+  };
 
   const fetchMasterData = async () => {
     try {
@@ -745,18 +785,31 @@ export default function MasterDashboard() {
           </div>
         )}
 
-        {/* Floating Minimizable / Maximizable Terminal Console Window */}
+        {/* Floating Minimizable / Maximizable Draggable Terminal Console Window */}
         {showFloatingTerminal && (
-          <div className={`fixed z-50 transition-all duration-300 ease-in-out shadow-2xl rounded-2xl border border-slate-700 overflow-hidden bg-[#141414] text-[#00b8a3] font-mono select-text ${
-            isTerminalMaximized 
-              ? 'inset-4 w-auto h-auto' 
-              : isTerminalMinimized 
-                ? 'bottom-4 right-4 w-96 h-12' 
-                : 'bottom-4 right-4 w-[580px] h-[340px]'
-          }`}>
-            {/* Terminal Top Window Bar */}
-            <div className="h-10 bg-[#222222] border-b border-slate-700 px-4 flex items-center justify-between select-none">
+          <div 
+            style={
+              isTerminalMaximized 
+                ? {} 
+                : { left: `${terminalPos.x}px`, top: `${terminalPos.y}px` }
+            }
+            className={`fixed z-50 shadow-[0_25px_60px_rgba(0,0,0,0.5)] rounded-2xl border border-slate-700 overflow-hidden bg-[#141414] text-[#00b8a3] font-mono select-text transition-all duration-150 ${
+              isTerminalMaximized 
+                ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85vw] max-w-4xl h-[70vh] max-h-[600px]' 
+                : isTerminalMinimized 
+                  ? 'w-96 h-11' 
+                  : 'w-[580px] h-[340px]'
+            }`}
+          >
+            {/* Terminal Top Window Bar (Draggable Drag Handle) */}
+            <div 
+              onMouseDown={handleTerminalMouseDown}
+              className={`h-11 bg-[#222222] border-b border-slate-700 px-4 flex items-center justify-between select-none ${
+                isTerminalMaximized ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'
+              }`}
+            >
               <div className="flex items-center space-x-2">
+                <GripHorizontal className="w-4 h-4 text-slate-500 mr-1" />
                 <Terminal className="w-4 h-4 text-[#00b8a3]" />
                 <span className="font-bold text-xs text-white uppercase tracking-wider">Live Execution Floating Terminal</span>
                 {benchmarking && (
@@ -766,7 +819,7 @@ export default function MasterDashboard() {
                   </span>
                 )}
               </div>
-              <div className="flex items-center space-x-1.5">
+              <div className="flex items-center space-x-1.5" onMouseDown={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => setIsTerminalMinimized(!isTerminalMinimized)}
                   className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
@@ -780,7 +833,7 @@ export default function MasterDashboard() {
                     setIsTerminalMinimized(false);
                   }}
                   className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
-                  title={isTerminalMaximized ? 'Restore Normal Window' : 'Maximize Terminal'}
+                  title={isTerminalMaximized ? 'Restore Window Size' : 'Maximize Window'}
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
                 </button>
@@ -796,7 +849,7 @@ export default function MasterDashboard() {
 
             {/* Terminal Body Console Output */}
             {!isTerminalMinimized && (
-              <div className="p-4 overflow-y-auto h-[calc(100%-40px)] text-xs space-y-1.5 leading-relaxed select-text font-mono">
+              <div className="p-4 overflow-y-auto h-[calc(100%-44px)] text-xs space-y-1.5 leading-relaxed select-text font-mono">
                 {terminalLogs.length === 0 ? (
                   <div className="text-slate-500 italic">No executions logged yet...</div>
                 ) : (
