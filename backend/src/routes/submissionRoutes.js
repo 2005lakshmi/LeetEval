@@ -60,7 +60,7 @@ router.get('/room/:roomId', verifyAdminToken, async (req, res) => {
     const sessionIds = sessions.map(s => s._id);
 
     const submissions = await Submission.find({ sessionId: { $in: sessionIds } })
-      .populate('questionId', 'title difficulty')
+      .populate('questionId', 'title difficulty sampleTestcases hiddenTestcases')
       .sort({ submittedAt: -1 });
 
     const sessionMap = new Map();
@@ -70,7 +70,16 @@ router.get('/room/:roomId', verifyAdminToken, async (req, res) => {
       const student = sessionMap.get(String(sub.sessionId)) || { name: 'Unknown', usn: '' };
       const testResults = Array.isArray(sub.testResults) ? sub.testResults : [];
       const passedCount = testResults.filter(t => t && t.passed).length;
-      const totalCount = testResults.length;
+
+      const qSampleCount = sub.questionId?.sampleTestcases?.length || 0;
+      const qHiddenCount = sub.questionId?.hiddenTestcases?.length || 0;
+      const questionTotalTestcases = (qSampleCount + qHiddenCount) || 1;
+      const totalCount = Math.max(questionTotalTestcases, testResults.length);
+
+      let computedVerdict = sub.verdict;
+      if (computedVerdict === 'Accepted' && passedCount < totalCount) {
+        computedVerdict = 'Wrong Answer';
+      }
 
       return {
         _id: sub._id,
@@ -78,7 +87,7 @@ router.get('/room/:roomId', verifyAdminToken, async (req, res) => {
         usn: student.usn,
         questionTitle: sub.questionId?.title || 'Unknown',
         language: sub.language,
-        verdict: sub.verdict,
+        verdict: computedVerdict,
         totalRuntimeMs: sub.totalRuntimeMs,
         submittedAt: sub.submittedAt,
         code: sub.code,
