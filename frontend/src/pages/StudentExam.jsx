@@ -569,18 +569,20 @@ export default function StudentExam() {
     );
   }
 
-  if (!examData || !examData.questions || examData.questions.length === 0) {
+  if (!examData) {
     return (
-      <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center space-y-3 text-slate-400 font-mono text-sm">
-        <RefreshCw className="w-6 h-6 text-[#00b8a3] animate-spin" />
-        <span>Loading LeetCode Assessment Interface...</span>
+      <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center space-y-4 text-[#00b8a3] font-mono text-sm">
+        <RefreshCw className="w-8 h-8 animate-spin text-[#00b8a3]" />
+        <span className="font-bold text-white tracking-wider">Loading LeetCode Assessment Interface...</span>
       </div>
     );
   }
 
-  const currentQuestion = examData.questions[activeQuestionIndex] || {
-    title: 'Question',
-    descriptionHtml: 'Loading question details...',
+  const questionsList = Array.isArray(examData.questions) ? examData.questions : [];
+  const currentQuestion = questionsList[activeQuestionIndex] || {
+    _id: 'default_q',
+    title: 'Coding Question',
+    descriptionHtml: '<p>Loading problem description...</p>',
     sampleTestcases: [],
     boilerplate: {}
   };
@@ -609,9 +611,9 @@ export default function StudentExam() {
 
           {/* Question Selector Buttons */}
           <div className="flex space-x-1.5 overflow-x-auto">
-            {examData.questions.map((q, idx) => {
+            {questionsList.map((q, idx) => {
               const isSubmitted = submittedQuestionIds.includes(String(q._id));
-              const isLocked = examData.sequentialLock && idx > activeQuestionIndex && !submittedQuestionIds.includes(String(examData.questions[idx - 1]?._id));
+              const isLocked = examData.sequentialLock && idx > activeQuestionIndex && !submittedQuestionIds.includes(String(questionsList[idx - 1]?._id));
 
               return (
                 <button

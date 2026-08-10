@@ -147,8 +147,9 @@ router.get('/session/:sessionId', async (req, res) => {
 
     if (!session) return res.status(404).json({ message: 'Session not found' });
 
-    const room = session.roomId;
-    const paper = room.paperId;
+    const room = session.roomId || {};
+    const paper = room.paperId || {};
+    const questions = Array.isArray(paper.questionIds) ? paper.questionIds : [];
 
     const totalMinutes = room.timeLimitMinutesOverride || paper.timeLimitMinutes || 60;
     const totalMs = totalMinutes * 60 * 1000;
@@ -159,7 +160,7 @@ router.get('/session/:sessionId', async (req, res) => {
       timeRemainingSeconds = Math.max(0, Math.floor((totalMs - elapsedMs) / 1000));
     }
 
-    const extraMinutes = session.reopenLog.reduce((acc, log) => acc + (log.timeAddedMinutes || 0), 0);
+    const extraMinutes = Array.isArray(session.reopenLog) ? session.reopenLog.reduce((acc, log) => acc + (log.timeAddedMinutes || 0), 0) : 0;
     timeRemainingSeconds += extraMinutes * 60;
 
     // If time expired or room status is ended, mark session auto-submitted in DB!
@@ -177,16 +178,16 @@ router.get('/session/:sessionId', async (req, res) => {
       name: session.name,
       usn: session.usn,
       status: session.status,
-      roomStatus: room.status,
-      warningCount: session.warningCount,
+      roomStatus: room.status || 'active',
+      warningCount: session.warningCount || 0,
       warningLimit: room.warningLimit || 3,
       tabSwitchCount: session.tabSwitchCount || 0,
       tabSwitchLimit: room.tabSwitchLimit || 3,
       sequentialLock: Boolean(room.sequentialLock || paper.sequentialLock),
       timeRemainingSeconds: ['auto-submitted', 'submitted'].includes(session.status) ? 0 : timeRemainingSeconds,
-      roomCode: room.roomCode,
-      paperTitle: paper.title,
-      questions: paper.questionIds,
+      roomCode: room.roomCode || 'ROOM',
+      paperTitle: paper.title || 'Coding Assessment',
+      questions,
       submittedQuestionIds,
       currentCode: Object.fromEntries(session.currentCode || new Map())
     });
