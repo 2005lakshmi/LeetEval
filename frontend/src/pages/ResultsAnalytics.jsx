@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { BarChart3, Code2, Eye, Trophy, Clock, Download, Printer, Filter, CheckCircle2, AlertTriangle, FileText, X, CheckCircle, XCircle } from 'lucide-react';
+import { BarChart3, Code2, Eye, Trophy, Clock, Download, Printer, Filter, CheckCircle2, AlertTriangle, FileText, X, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 
 export default function ResultsAnalytics() {
   const { roomId } = useParams();
+  const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
   const [roomData, setRoomData] = useState(null);
 
@@ -57,10 +58,14 @@ export default function ResultsAnalytics() {
   };
 
   const renderTestcaseStatusBadge = (sub) => {
-    const verdict = sub.verdict || 'Pending';
     const testResults = getSubmissionTestResults(sub);
-    const passedCount = testResults.filter(t => t && t.passed).length;
-    const totalCount = testResults.length;
+    const passedCount = sub.passedCount !== undefined ? sub.passedCount : testResults.filter(t => t && t.passed).length;
+    const totalCount = sub.totalCount !== undefined ? sub.totalCount : testResults.length;
+    
+    let verdict = sub.verdict || 'Pending';
+    if (verdict === 'Accepted' && totalCount > 0 && passedCount < totalCount) {
+      verdict = 'Wrong Answer';
+    }
 
     if (verdict === 'Runtime Error') {
       return (
@@ -107,13 +112,16 @@ export default function ResultsAnalytics() {
   // Render Pretty-Printed Individual Testcases Cards matching user screenshot
   const renderPrettyTestcaseResultsList = (sub) => {
     const testResults = getSubmissionTestResults(sub);
-    const verdict = sub.verdict || 'Wrong Answer';
-    const isAccepted = verdict === 'Accepted';
+    const passedCount = testResults.filter(t => t && t.passed).length;
+    const totalCount = testResults.length;
+    
+    let verdict = sub.verdict || 'Wrong Answer';
+    if (verdict === 'Accepted' && totalCount > 0 && passedCount < totalCount) {
+      verdict = 'Wrong Answer';
+    }
+    const isAccepted = verdict === 'Accepted' && passedCount === totalCount && totalCount > 0;
 
     if (testResults.length > 0) {
-      const passedCount = testResults.filter(t => t && t.passed).length;
-      const totalCount = testResults.length;
-
       return (
         <div className="space-y-3 font-mono">
           {/* Header Pill matching screenshot */}
@@ -133,7 +141,7 @@ export default function ResultsAnalytics() {
           {/* List of Individual Testcase Cards matching user screenshot */}
           <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
             {testResults.map((tc, idx) => {
-              // Fix sequential 1-based index numbering: Testcase 1, Testcase 2, etc.
+              // Sequential 1-based index numbering: Testcase 1, Testcase 2, etc.
               const indexNum = idx + 1;
               const passed = Boolean(tc.passed);
               const errorMsg = tc.error || '';
@@ -247,8 +255,20 @@ export default function ResultsAnalytics() {
         <div className="fixed inset-0 bg-gradient-to-t from-[#111111]/40 via-transparent to-[#111111]/30 pointer-events-none z-0" />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10 print:max-w-none print:p-0 print:m-0">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 relative z-10 print:max-w-none print:p-0 print:m-0">
         
+        {/* Clean Back Button directly below top navbar on left side */}
+        <div className="flex items-center justify-between print:hidden">
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-white/95 hover:bg-white text-[#111111] hover:text-[#0E52FF] border border-white/80 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-2 shadow-md transition-all active:scale-[0.98]"
+            title="Go Back to Previous Page"
+          >
+            <ArrowLeft className="w-4 h-4 text-[#0E52FF]" />
+            <span>Back</span>
+          </button>
+        </div>
+
         {/* Header Banner (Hidden when printing) */}
         <div className="relative rounded-xl p-8 bg-white/35 backdrop-blur-xl border border-white/70 shadow-[0_25px_60px_rgba(0,0,0,0.25)] text-[#111111] flex flex-col md:flex-row md:items-center justify-between gap-6 print:hidden">
           <div>
@@ -301,35 +321,45 @@ export default function ResultsAnalytics() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white font-medium">
-                {submissions.map((sub) => (
-                  <tr key={sub._id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3 font-bold text-[#111111]">{sub.studentName}</td>
-                    <td className="p-3 font-mono text-[#0E52FF] font-bold">{sub.usn}</td>
-                    <td className="p-3 font-semibold">{sub.questionTitle}</td>
-                    <td className="p-3 uppercase font-mono text-[#555555] font-bold">{sub.language}</td>
-                    <td className="p-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-extrabold uppercase ${
-                        sub.verdict === 'Accepted' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                        sub.verdict === 'Wrong Answer' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
-                      }`}>
-                        {sub.verdict}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      {renderTestcaseStatusBadge(sub)}
-                    </td>
-                    <td className="p-3 font-mono font-bold text-[#111111]">{sub.totalRuntimeMs} ms</td>
-                    <td className="p-3">
-                      <button
-                        onClick={() => setViewCodeModal(sub)}
-                        className="px-3 py-1 bg-white hover:bg-slate-100 text-[#0E52FF] border border-[#0E52FF]/30 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1 shadow-sm transition-all"
-                      >
-                        <Eye className="w-3.5 h-3.5 text-[#0E52FF]" />
-                        <span>View Code</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {submissions.map((sub) => {
+                  const testResults = getSubmissionTestResults(sub);
+                  const passedCount = sub.passedCount !== undefined ? sub.passedCount : testResults.filter(t => t && t.passed).length;
+                  const totalCount = sub.totalCount !== undefined ? sub.totalCount : testResults.length;
+                  let displayVerdict = sub.verdict || 'Pending';
+                  if (displayVerdict === 'Accepted' && totalCount > 0 && passedCount < totalCount) {
+                    displayVerdict = 'Wrong Answer';
+                  }
+
+                  return (
+                    <tr key={sub._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3 font-bold text-[#111111]">{sub.studentName}</td>
+                      <td className="p-3 font-mono text-[#0E52FF] font-bold">{sub.usn}</td>
+                      <td className="p-3 font-semibold">{sub.questionTitle}</td>
+                      <td className="p-3 uppercase font-mono text-[#555555] font-bold">{sub.language}</td>
+                      <td className="p-3">
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-extrabold uppercase ${
+                          displayVerdict === 'Accepted' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                          displayVerdict === 'Wrong Answer' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                        }`}>
+                          {displayVerdict}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        {renderTestcaseStatusBadge(sub)}
+                      </td>
+                      <td className="p-3 font-mono font-bold text-[#111111]">{sub.totalRuntimeMs} ms</td>
+                      <td className="p-3">
+                        <button
+                          onClick={() => setViewCodeModal(sub)}
+                          className="px-3 py-1 bg-white hover:bg-slate-100 text-[#0E52FF] border border-[#0E52FF]/30 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1 shadow-sm transition-all"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-[#0E52FF]" />
+                          <span>View Code</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
