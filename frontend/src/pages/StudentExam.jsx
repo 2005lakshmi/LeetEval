@@ -93,6 +93,18 @@ export default function StudentExam() {
     }
   };
 
+  // Auto-switch selectedLanguage if current choice is not in paper allowedLanguages
+  useEffect(() => {
+    if (!examData) return;
+    const allowed = Array.isArray(examData.allowedLanguages) && examData.allowedLanguages.length > 0
+      ? examData.allowedLanguages
+      : ['python', 'cpp', 'c', 'java', 'javascript'];
+
+    if (allowed.length > 0 && !allowed.includes(selectedLanguage)) {
+      setSelectedLanguage(allowed[0]);
+    }
+  }, [examData]);
+
   // Setup Socket.IO & Heartbeat
   useEffect(() => {
     const socket = io(window.location.origin);
@@ -583,12 +595,6 @@ export default function StudentExam() {
     ? examData.allowedLanguages
     : ['python', 'cpp', 'c', 'java', 'javascript'];
 
-  // Auto-switch selectedLanguage if current choice is not in allowedLanguages
-  useEffect(() => {
-    if (allowedLanguages.length > 0 && !allowedLanguages.includes(selectedLanguage)) {
-      setSelectedLanguage(allowedLanguages[0]);
-    }
-  }, [examData]);
   const currentQuestion = questionsList[activeQuestionIndex] || {
     _id: 'default_q',
     title: 'Coding Question',
