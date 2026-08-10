@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { Plus, CheckCircle2, XCircle, Play, ShieldAlert, Code2, Trash2, Eye, DownloadCloud, Sparkles, Pencil, X, Scissors, Check, Terminal, Maximize2, Minimize2, Save } from 'lucide-react';
+import { generateHarnessAiPrompt } from '../utils/harnessPromptGenerator';
+import { Plus, CheckCircle2, XCircle, Play, ShieldAlert, Code2, Trash2, Eye, DownloadCloud, Sparkles, Pencil, X, Scissors, Check, Terminal, Maximize2, Minimize2, Save, Copy, FileText } from 'lucide-react';
 
 export default function QuestionBank() {
   const [questions, setQuestions] = useState([]);
@@ -10,6 +11,9 @@ export default function QuestionBank() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [aiPromptText, setAiPromptText] = useState('');
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [editingQuestionId, setEditingQuestionId] = useState(null);
   const [isConsoleExpanded, setIsConsoleExpanded] = useState(false);
@@ -67,6 +71,37 @@ export default function QuestionBank() {
       console.error('Error fetching questions:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOpenAiPrompt = (targetQuestion) => {
+    const q = targetQuestion || formData;
+    const text = generateHarnessAiPrompt(q);
+    setAiPromptText(text);
+    setShowPromptModal(true);
+    setCopiedPrompt(false);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 3500);
+      }
+    } catch (err) {
+      console.error('Auto copy error:', err);
+    }
+  };
+
+  const handleCopyPromptToClipboard = () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(aiPromptText);
+        setCopiedPrompt(true);
+        setTimeout(() => setCopiedPrompt(false), 3500);
+      } else {
+        alert('Please select and copy the text manually from the box below.');
+      }
+    } catch (err) {
+      alert('Failed to copy. Please select and copy text manually.');
     }
   };
 
@@ -462,6 +497,15 @@ export default function QuestionBank() {
 
                 <div className="flex items-center space-x-2">
                   <button
+                    onClick={() => handleOpenAiPrompt(q)}
+                    className="p-1.5 text-amber-700 hover:text-amber-900 hover:bg-amber-100 rounded-lg transition-colors flex items-center space-x-1 font-mono text-xs font-bold"
+                    title="Generate & Copy AI Prompt for 5-Language Harness Code"
+                  >
+                    <Copy className="w-4 h-4 text-amber-700" />
+                    <span className="hidden sm:inline">AI Prompt</span>
+                  </button>
+
+                  <button
                     onClick={() => handleOpenEdit(q)}
                     className="p-1.5 text-slate-600 hover:text-[#0E52FF] hover:bg-[#0E52FF]/10 rounded-lg transition-colors"
                     title="Edit Question Details & Boilerplates"
@@ -487,10 +531,21 @@ export default function QuestionBank() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-800 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white">
-                {editingQuestionId ? 'Edit Question' : 'Create Question'}
-              </h2>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+              <div className="flex items-center space-x-3">
+                <h2 className="text-xl font-bold text-white">
+                  {editingQuestionId ? 'Edit Question' : 'Create Question'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAiPrompt(formData)}
+                  className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold rounded-lg flex items-center space-x-1.5 transition-all shadow-sm"
+                  title="Generate & Copy AI Prompt for 5-Language Harness Code"
+                >
+                  <Copy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Copy AI Harness Prompt</span>
+                </button>
+              </div>
               <button
                 onClick={() => setShowCreateModal(false)}
                 className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
@@ -725,6 +780,16 @@ export default function QuestionBank() {
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
+                  onClick={() => handleOpenAiPrompt(selectedQuestion || formData)}
+                  className="px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold rounded-xl flex items-center space-x-1.5 transition-all shadow-sm"
+                  title="Generate & Copy AI Prompt for 5-Language Harness Code"
+                >
+                  <Copy className="w-4 h-4 text-amber-400" />
+                  <span>Copy AI Harness Prompt</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={handleRunVerification}
                   disabled={verifying}
                   className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/20 flex items-center space-x-2 transition-all disabled:opacity-50"
@@ -926,7 +991,58 @@ int main() {
         </div>
       )}
 
-    </div>
+      {/* AI Harness Generation Prompt Modal */}
+      {showPromptModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-3xl w-full border border-white shadow-2xl space-y-4 text-[#111111] max-h-[90vh] flex flex-col font-sans">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center space-x-2 font-mono">
+                <Sparkles className="w-5 h-5 text-amber-600" />
+                <h3 className="text-lg font-extrabold text-[#111111]">
+                  AI Harness Generation Prompt
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowPromptModal(false)}
+                className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs font-mono text-amber-900">
+              <span>{copiedPrompt ? '✓ Copied to clipboard! Ready to paste in ChatGPT / Gemini / Claude.' : 'Click below to copy prompt text for AI harness generation.'}</span>
+              <button
+                onClick={handleCopyPromptToClipboard}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-mono font-bold text-xs uppercase tracking-wider rounded-lg shadow-sm flex items-center space-x-1.5 transition-all"
+              >
+                <Copy className="w-4 h-4 text-white" />
+                <span>{copiedPrompt ? 'COPIED!' : 'COPY PROMPT'}</span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex flex-col h-96">
+              <label className="block text-xs font-mono font-bold text-slate-500 uppercase mb-1">Generated Prompt Content (Contains question details + 4sum.txt template context):</label>
+              <textarea
+                readOnly
+                value={aiPromptText}
+                className="w-full flex-1 p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500 leading-relaxed resize-none select-text"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                onClick={() => setShowPromptModal(false)}
+                className="px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-mono font-bold rounded-lg shadow-md uppercase tracking-wider"
+              >
+                Close & Return
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      </div>
     </div>
   );
 }
