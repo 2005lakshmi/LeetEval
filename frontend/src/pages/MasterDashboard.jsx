@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
-import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart } from 'lucide-react';
+import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X } from 'lucide-react';
 
 export default function MasterDashboard() {
   const [users, setUsers] = useState([]);
@@ -13,6 +13,10 @@ export default function MasterDashboard() {
   // Edit User Modal State
   const [editUser, setEditUser] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', email: '', role: 'faculty', status: 'approved' });
+
+  // Maximize Language Code Modal State
+  const [expandedLanguage, setExpandedLanguage] = useState(null); // 'c' | 'python' | 'java' | 'cpp' | 'js' | null
+  const [selectedBenchmarkLog, setSelectedBenchmarkLog] = useState(null);
 
   // Interactive Concurrency & Stress Simulation State
   const [studentInputCount, setStudentInputCount] = useState(60);
@@ -156,7 +160,6 @@ export default function MasterDashboard() {
     return <div className="max-w-7xl mx-auto px-4 py-8 text-[#111111] font-semibold">Loading Master Control Panel...</div>;
   }
 
-  const pendingUsers = users.filter((u) => u.status === 'pending');
   const activeSocketsCount = health?.activeSockets || 0;
 
   // RAM Allocation Math
@@ -168,6 +171,14 @@ export default function MasterDashboard() {
 
   // SVG Pie Chart Calculation
   const strokeDashoffset = 283 - (283 * ramUsedPct) / 100;
+
+  const langConfigs = {
+    c: { title: 'C Language Benchmark', color: 'text-[#0E52FF]', codeKey: 'cCode', countKey: 'cCount' },
+    python: { title: 'Python Benchmark', color: 'text-amber-700', codeKey: 'pythonCode', countKey: 'pythonCount' },
+    java: { title: 'Java Benchmark', color: 'text-rose-700', codeKey: 'javaCode', countKey: 'javaCount' },
+    cpp: { title: 'C++ Benchmark', color: 'text-purple-700', codeKey: 'cppCode', countKey: 'cppCount' },
+    js: { title: 'JavaScript Benchmark', color: 'text-amber-600', codeKey: 'jsCode', countKey: 'jsCount' }
+  };
 
   return (
     <div className="min-h-screen bg-[#111111] text-[#FFFFFF] font-['Source_Sans_3',sans-serif] relative overflow-hidden select-none pb-12">
@@ -334,20 +345,31 @@ export default function MasterDashboard() {
 
           <form onSubmit={handleRunMultiLangBenchmark} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              
               {/* C Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-[#0E52FF] uppercase">C Language Benchmark</span>
-                  <div className="flex items-center space-x-1">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={benchForm.cCount}
-                      onChange={(e) => setBenchForm({ ...benchForm, cCount: e.target.value })}
-                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
-                    />
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedLanguage('c')}
+                      className="p-1 text-slate-500 hover:text-[#0E52FF] hover:bg-slate-200 rounded transition-colors"
+                      title="Maximize Editor Modal"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={benchForm.cCount}
+                        onChange={(e) => setBenchForm({ ...benchForm, cCount: e.target.value })}
+                        className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                      />
+                    </div>
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C Source Code Snippet:</label>
@@ -361,19 +383,29 @@ export default function MasterDashboard() {
               </div>
 
               {/* Python Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-amber-700 uppercase">Python Benchmark</span>
-                  <div className="flex items-center space-x-1">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={benchForm.pythonCount}
-                      onChange={(e) => setBenchForm({ ...benchForm, pythonCount: e.target.value })}
-                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
-                    />
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedLanguage('python')}
+                      className="p-1 text-slate-500 hover:text-amber-700 hover:bg-slate-200 rounded transition-colors"
+                      title="Maximize Editor Modal"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={benchForm.pythonCount}
+                        onChange={(e) => setBenchForm({ ...benchForm, pythonCount: e.target.value })}
+                        className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                      />
+                    </div>
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Python Source Code Snippet:</label>
@@ -387,19 +419,29 @@ export default function MasterDashboard() {
               </div>
 
               {/* Java Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-rose-700 uppercase">Java Benchmark</span>
-                  <div className="flex items-center space-x-1">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={benchForm.javaCount}
-                      onChange={(e) => setBenchForm({ ...benchForm, javaCount: e.target.value })}
-                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
-                    />
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedLanguage('java')}
+                      className="p-1 text-slate-500 hover:text-rose-700 hover:bg-slate-200 rounded transition-colors"
+                      title="Maximize Editor Modal"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={benchForm.javaCount}
+                        onChange={(e) => setBenchForm({ ...benchForm, javaCount: e.target.value })}
+                        className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                      />
+                    </div>
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Java Source Code Snippet:</label>
@@ -413,19 +455,29 @@ export default function MasterDashboard() {
               </div>
 
               {/* C++ Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-purple-700 uppercase">C++ Benchmark</span>
-                  <div className="flex items-center space-x-1">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={benchForm.cppCount}
-                      onChange={(e) => setBenchForm({ ...benchForm, cppCount: e.target.value })}
-                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
-                    />
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedLanguage('cpp')}
+                      className="p-1 text-slate-500 hover:text-purple-700 hover:bg-slate-200 rounded transition-colors"
+                      title="Maximize Editor Modal"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={benchForm.cppCount}
+                        onChange={(e) => setBenchForm({ ...benchForm, cppCount: e.target.value })}
+                        className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                      />
+                    </div>
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C++ Source Code Snippet:</label>
@@ -439,19 +491,29 @@ export default function MasterDashboard() {
               </div>
 
               {/* JavaScript Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-amber-600 uppercase">JavaScript Benchmark</span>
-                  <div className="flex items-center space-x-1">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={benchForm.jsCount}
-                      onChange={(e) => setBenchForm({ ...benchForm, jsCount: e.target.value })}
-                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
-                    />
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedLanguage('js')}
+                      className="p-1 text-slate-500 hover:text-amber-600 hover:bg-slate-200 rounded transition-colors"
+                      title="Maximize Editor Modal"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="flex items-center space-x-1">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="50"
+                        value={benchForm.jsCount}
+                        onChange={(e) => setBenchForm({ ...benchForm, jsCount: e.target.value })}
+                        className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center text-xs font-bold font-mono focus:ring-2 focus:ring-[#0E52FF]"
+                      />
+                    </div>
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">JS Source Code Snippet:</label>
@@ -463,6 +525,7 @@ export default function MasterDashboard() {
                   className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
                 />
               </div>
+
             </div>
 
             <div className="flex justify-end">
@@ -486,7 +549,7 @@ export default function MasterDashboard() {
             </div>
           </form>
 
-          {/* Benchmark Results Telemetry Cards */}
+          {/* Benchmark Results Telemetry Cards & Console Output Logs */}
           {benchResult && (
             <div className="pt-4 border-t border-slate-200 space-y-4 font-mono">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -517,8 +580,8 @@ export default function MasterDashboard() {
 
               </div>
 
-              {/* Execution Log Table */}
-              <div className="overflow-x-auto max-h-60 rounded-lg border border-slate-200 shadow-sm">
+              {/* Execution Log Table with Console Output Action */}
+              <div className="overflow-x-auto max-h-64 rounded-lg border border-slate-200 shadow-sm">
                 <table className="w-full text-left text-xs text-[#111111]">
                   <thead className="bg-[#FAF8F5] uppercase font-mono font-extrabold border-b border-slate-200">
                     <tr>
@@ -526,6 +589,7 @@ export default function MasterDashboard() {
                       <th className="p-2.5">Language</th>
                       <th className="p-2.5">Verdict</th>
                       <th className="p-2.5">Latency</th>
+                      <th className="p-2.5">Console Output</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white font-mono text-xs">
@@ -534,11 +598,22 @@ export default function MasterDashboard() {
                         <td className="p-2.5 font-bold">{log.index}</td>
                         <td className="p-2.5 uppercase font-bold text-[#0E52FF]">{log.language}</td>
                         <td className="p-2.5">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            log.verdict === 'Accepted' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                          }`}>
                             {log.verdict}
                           </span>
                         </td>
                         <td className="p-2.5 font-bold text-[#111111]">{log.latencyMs} ms</td>
+                        <td className="p-2.5">
+                          <button
+                            onClick={() => setSelectedBenchmarkLog(log)}
+                            className="px-2.5 py-1 bg-white hover:bg-slate-100 text-[#0E52FF] border border-[#0E52FF]/30 rounded text-[10px] font-mono font-bold uppercase flex items-center space-x-1 shadow-sm"
+                          >
+                            <Terminal className="w-3 h-3 text-[#0E52FF]" />
+                            <span>View Console Log</span>
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -549,91 +624,103 @@ export default function MasterDashboard() {
 
         </div>
 
-        {/* Candidate Load & Worst-Case Execution Simulator Form */}
-        <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-5 h-5 text-[#0E52FF]" />
-              <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">
-                Candidate Load & Worst-Case Execution Simulator
-              </h2>
-            </div>
-            <span className="text-xs font-mono font-bold text-[#555555]">Simulate candidate traffic before live exam launch</span>
-          </div>
-
-          <form onSubmit={handleRunTrafficSimulation} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <div>
-              <label className="block text-xs font-mono font-bold text-[#111111] uppercase tracking-wider mb-2">
-                Simulated Candidate Count (N)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="2000"
-                required
-                value={studentInputCount}
-                onChange={(e) => setStudentInputCount(e.target.value)}
-                placeholder="e.g. 60"
-                className="w-full px-4 py-3 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-mono font-bold text-sm focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono font-bold text-[#111111] uppercase tracking-wider mb-2">
-                Worst-Case Traffic Burst Scenario
-              </label>
-              <select
-                value={selectedScenario}
-                onChange={(e) => setSelectedScenario(e.target.value)}
-                className="w-full px-4 py-3 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-mono font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
-              >
-                <option value="burst_submission">100% Simultaneous Code Submissions (Execution Load)</option>
-                <option value="burst_warning">100% Simultaneous Fullscreen Exits & Warning Alerts</option>
-                <option value="burst_join">100% Simultaneous Room Join & Socket Handshake</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              disabled={simulating}
-              className="py-3 px-6 bg-[#0E52FF] hover:bg-[#0642d9] text-white font-mono font-bold text-xs uppercase tracking-wider rounded-lg shadow-xl shadow-[#0E52FF]/30 flex items-center justify-center space-x-2 transition-all active:scale-[0.99] disabled:opacity-50"
-            >
-              {simulating ? (
-                <>
-                  <RefreshCw className="w-4 h-4 text-white animate-spin" />
-                  <span>SIMULATING WORST-CASE LOAD...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 text-white fill-white" />
-                  <span>RUN WORST-CASE CONCURRENCY SIMULATION</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Simulation Output Telemetry Cards */}
-          {simResult && (
-            <div className="pt-4 border-t border-slate-200 space-y-4">
-              <div className={`p-4 rounded-lg border font-mono text-xs flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm ${
-                simResult.isCrashProof 
-                  ? 'bg-emerald-100 border-emerald-300 text-emerald-900'
-                  : 'bg-amber-100 border-amber-300 text-amber-900'
-              }`}>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-700 flex-shrink-0" />
-                  <div>
-                    <span className="font-extrabold text-sm uppercase">Server Resilience Verdict: {simResult.verdict}</span>
-                    <p className="text-xs text-emerald-800 font-sans font-semibold mt-0.5">{simResult.recommendations}</p>
-                  </div>
+        {/* Maximize Language Code Modal */}
+        {expandedLanguage && langConfigs[expandedLanguage] && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-4xl w-full border border-white shadow-2xl space-y-4 text-[#111111] max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center space-x-2 font-mono">
+                  <Code className="w-5 h-5 text-[#0E52FF]" />
+                  <h3 className={`text-lg font-extrabold uppercase ${langConfigs[expandedLanguage].color}`}>
+                    {langConfigs[expandedLanguage].title} (Expanded Code Editor)
+                  </h3>
                 </div>
-                <div className="px-3 py-1 bg-white rounded border border-emerald-300 text-xs font-bold text-emerald-900 text-center">
-                  Simulated Candidates: {simResult.studentCount}
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-1 font-mono text-xs">
+                    <span className="text-slate-500 font-bold uppercase">Runs:</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      value={benchForm[langConfigs[expandedLanguage].countKey]}
+                      onChange={(e) => setBenchForm({ ...benchForm, [langConfigs[expandedLanguage].countKey]: e.target.value })}
+                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center font-bold focus:ring-2 focus:ring-[#0E52FF]"
+                    />
+                  </div>
+                  <button
+                    onClick={() => setExpandedLanguage(null)}
+                    className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 flex items-center space-x-1 font-mono text-xs font-bold uppercase"
+                  >
+                    <Minimize2 className="w-4 h-4" />
+                    <span>Minimize</span>
+                  </button>
                 </div>
               </div>
+
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <label className="block text-xs font-mono font-bold text-slate-500 uppercase mb-2">Source Code Snippet:</label>
+                <textarea
+                  rows={16}
+                  value={benchForm[langConfigs[expandedLanguage].codeKey]}
+                  onChange={(e) => setBenchForm({ ...benchForm, [langConfigs[expandedLanguage].codeKey]: e.target.value })}
+                  placeholder="Paste or write code here..."
+                  className="w-full flex-1 p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed select-text"
+                />
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setExpandedLanguage(null)}
+                  className="px-5 py-2.5 bg-[#0E52FF] hover:bg-[#0642d9] text-white text-xs font-mono font-bold rounded-lg shadow-md uppercase tracking-wider"
+                >
+                  Done & Minimize Back
+                </button>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* Selected Benchmark Log Console Output Modal */}
+        {selectedBenchmarkLog && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-2xl w-full border border-white shadow-2xl space-y-4 text-[#111111]">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center space-x-2 font-mono">
+                  <Terminal className="w-5 h-5 text-[#0E52FF]" />
+                  <h3 className="text-lg font-extrabold text-[#111111]">
+                    Run #{selectedBenchmarkLog.index} [{selectedBenchmarkLog.language.toUpperCase()}] Console Output
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSelectedBenchmarkLog(null)}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-2 font-mono">
+                <div className="flex items-center justify-between text-xs">
+                  <span>Verdict: <strong className="text-emerald-700">{selectedBenchmarkLog.verdict}</strong></span>
+                  <span>Latency: <strong className="text-[#0E52FF]">{selectedBenchmarkLog.latencyMs} ms</strong></span>
+                </div>
+                <div className="text-xs font-bold uppercase text-slate-500">Raw Console Log & Stdout:</div>
+                <pre className="p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl max-h-64 overflow-y-auto whitespace-pre-wrap select-text">
+                  {selectedBenchmarkLog.rawOutput || 'Execution completed with no console output.'}
+                </pre>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setSelectedBenchmarkLog(null)}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-mono font-bold rounded-lg shadow-md uppercase tracking-wider"
+                >
+                  Close Console Modal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Registered Credentials & User Management Table */}
         <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">
@@ -762,7 +849,7 @@ export default function MasterDashboard() {
                     <select
                       value={editForm.status}
                       onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                      className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-mono font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                      className="w-full p-3 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
                     >
                       <option value="approved">Approved</option>
                       <option value="pending">Pending</option>

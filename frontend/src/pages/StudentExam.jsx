@@ -50,6 +50,8 @@ export default function StudentExam() {
 
   const [saveStatus, setSaveStatus] = useState('Saved');
 
+  const [sessionError, setSessionError] = useState(null);
+
   // Fetch initial exam session data
   useEffect(() => {
     fetchSessionData();
@@ -57,6 +59,7 @@ export default function StudentExam() {
 
   const fetchSessionData = async () => {
     try {
+      setSessionError(null);
       const res = await axios.get(`/api/student/session/${sessionId}`);
       const data = res.data;
       setExamData(data);
@@ -78,14 +81,15 @@ export default function StudentExam() {
 
       // Initialize boilerplate code or existing currentCode
       const initialCodes = { ...data.currentCode };
-      data.questions.forEach((q) => {
-        if (!initialCodes[q._id]) {
+      (data.questions || []).forEach((q) => {
+        if (q && q._id && !initialCodes[q._id]) {
           initialCodes[q._id] = q.boilerplate?.python || 'class Solution:\n    def solution(self, input_val):\n        return input_val\n';
         }
       });
       setCodeMap(initialCodes);
     } catch (err) {
       console.error('Error fetching exam session:', err);
+      setSessionError(err.response?.data?.message || err.message || 'Failed to connect to exam session server');
     }
   };
 
@@ -539,15 +543,47 @@ export default function StudentExam() {
     );
   }
 
-  if (!examData) {
+  if (sessionError) {
     return (
-      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center text-slate-400 font-mono text-sm">
-        Loading LeetCode Assessment Interface...
+      <div className="min-h-screen bg-[#111111] text-white flex items-center justify-center p-4">
+        <div className="bg-[#222222] p-8 rounded-xl max-w-md w-full border border-rose-500/40 text-center space-y-4 shadow-2xl">
+          <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto" />
+          <h2 className="text-xl font-bold font-serif">Exam Session Connection Error</h2>
+          <p className="text-xs text-slate-300 font-mono leading-relaxed">{sessionError}</p>
+          <div className="flex space-x-3 pt-2">
+            <button
+              onClick={() => navigate('/join')}
+              className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-mono font-bold text-xs rounded-lg uppercase"
+            >
+              Exit to Join Page
+            </button>
+            <button
+              onClick={fetchSessionData}
+              className="flex-1 py-2.5 bg-[#00b8a3] hover:bg-[#00a390] text-black font-mono font-bold text-xs rounded-lg uppercase"
+            >
+              Retry Connection
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  const currentQuestion = examData.questions[activeQuestionIndex];
+  if (!examData || !examData.questions || examData.questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center space-y-3 text-slate-400 font-mono text-sm">
+        <RefreshCw className="w-6 h-6 text-[#00b8a3] animate-spin" />
+        <span>Loading LeetCode Assessment Interface...</span>
+      </div>
+    );
+  }
+
+  const currentQuestion = examData.questions[activeQuestionIndex] || {
+    title: 'Question',
+    descriptionHtml: 'Loading question details...',
+    sampleTestcases: [],
+    boilerplate: {}
+  };
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -897,7 +933,17 @@ export default function StudentExam() {
 
               {activeBottomConsole === 'result' && (
                 <div>
-                  {!verdict ? (
+                  {(running || submitting) ? (
+                    <div className="p-4 rounded-lg bg-[#282828] border border-[#00b8a3]/40 text-center space-y-2 font-mono">
+                      <div className="flex items-center justify-center space-x-2 text-[#00b8a3]">
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        <span className="font-bold text-sm">Your code is queued for execution...</span>
+                      </div>
+                      <p className="text-xs text-slate-400">
+                        Evaluating code against testcase suite on execution worker pool. Please wait a moment.
+                      </p>
+                    </div>
+                  ) : !verdict ? (
                     <div className="text-[#8a8a8a] text-xs pt-4 text-center">
                       Click <strong>Run Code</strong> or <strong>Submit</strong> to evaluate your solution against testcases.
                     </div>

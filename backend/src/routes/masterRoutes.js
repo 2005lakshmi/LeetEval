@@ -189,6 +189,7 @@ router.post('/benchmark-simulate', async (req, res) => {
             language: job.language,
             verdict: res.verdict || 'Accepted',
             latencyMs: Number(latencyMs.toFixed(2)),
+            rawOutput: res.rawOutput || 'Execution completed with no output.',
             status: 'Success'
           };
         } catch (err) {
@@ -199,6 +200,7 @@ router.post('/benchmark-simulate', async (req, res) => {
             language: job.language,
             verdict: 'Error',
             latencyMs: Number(latencyMs.toFixed(2)),
+            rawOutput: err.message || 'Execution failed',
             status: err.message
           };
         }
