@@ -184,6 +184,9 @@ router.get('/session/:sessionId', async (req, res) => {
       tabSwitchCount: session.tabSwitchCount || 0,
       tabSwitchLimit: room.tabSwitchLimit || 3,
       sequentialLock: Boolean(room.sequentialLock || paper.sequentialLock),
+      allowedLanguages: Array.isArray(paper.allowedLanguages) && paper.allowedLanguages.length > 0
+        ? paper.allowedLanguages
+        : ['python', 'cpp', 'c', 'java', 'javascript'],
       timeRemainingSeconds: ['auto-submitted', 'submitted'].includes(session.status) ? 0 : timeRemainingSeconds,
       roomCode: room.roomCode || 'ROOM',
       paperTitle: paper.title || 'Coding Assessment',

@@ -6,6 +6,10 @@ const paperSchema = new mongoose.Schema({
   questionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question', required: true }],
   orderingMode: { type: String, enum: ['fixed', 'random', 'odd-even'], default: 'fixed' },
   timeLimitMinutes: { type: Number, required: true, default: 60 },
+  allowedLanguages: { 
+    type: [String], 
+    default: ['python', 'cpp', 'c', 'java', 'javascript'] 
+  },
   sequentialLock: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });

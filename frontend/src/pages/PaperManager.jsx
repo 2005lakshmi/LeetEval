@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
-import { Plus, FileText, CheckCircle2, ShieldAlert, Trash2, Clock, Shuffle } from 'lucide-react';
+import { Plus, FileText, CheckCircle2, ShieldAlert, Trash2, Clock, Shuffle, Code2, CheckSquare } from 'lucide-react';
 
 export default function PaperManager() {
   const [papers, setPapers] = useState([]);
@@ -12,8 +12,17 @@ export default function PaperManager() {
   const [title, setTitle] = useState('');
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(60);
   const [orderingMode, setOrderingMode] = useState('fixed');
+  const [allowedLanguages, setAllowedLanguages] = useState(['python', 'cpp', 'c', 'java', 'javascript']);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
   const [error, setError] = useState('');
+
+  const allLangOptions = [
+    { id: 'python', label: 'Python 3', color: 'text-amber-700 bg-amber-50 border-amber-200' },
+    { id: 'cpp', label: 'C++', color: 'text-purple-700 bg-purple-50 border-purple-200' },
+    { id: 'c', label: 'C Language', color: 'text-blue-700 bg-blue-50 border-blue-200' },
+    { id: 'java', label: 'Java', color: 'text-rose-700 bg-rose-50 border-rose-200' },
+    { id: 'javascript', label: 'JavaScript', color: 'text-amber-600 bg-amber-50 border-amber-200' }
+  ];
 
   useEffect(() => {
     fetchData();
@@ -43,18 +52,35 @@ export default function PaperManager() {
       return setError('Please select at least one question');
     }
 
+    if (allowedLanguages.length === 0) {
+      return setError('Please select at least one allowed programming language for students');
+    }
+
     try {
       await axios.post(
         '/api/papers',
-        { title, questionIds: selectedQuestionIds, orderingMode, timeLimitMinutes },
+        { title, questionIds: selectedQuestionIds, orderingMode, timeLimitMinutes, allowedLanguages },
         { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } }
       );
       setShowCreateModal(false);
       setTitle('');
       setSelectedQuestionIds([]);
+      setAllowedLanguages(['python', 'cpp', 'c', 'java', 'javascript']);
       fetchData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create paper');
+    }
+  };
+
+  const toggleLangOption = (langId) => {
+    if (allowedLanguages.includes(langId)) {
+      if (allowedLanguages.length === 1) {
+        alert('At least one programming language must be allowed for the exam paper!');
+        return;
+      }
+      setAllowedLanguages(allowedLanguages.filter(l => l !== langId));
+    } else {
+      setAllowedLanguages([...allowedLanguages, langId]);
     }
   };
 
@@ -108,9 +134,9 @@ export default function PaperManager() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight drop-shadow-sm">
-              Exam Papers
+              Exam Papers & Language Restrictions
             </h1>
-            <p className="text-sm text-[#111111] mt-1 font-semibold leading-relaxed">Assemble verified questions into structured exam papers with time limits</p>
+            <p className="text-sm text-[#111111] mt-1 font-semibold leading-relaxed">Assemble verified questions into structured exam papers and configure allowed programming languages</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -126,107 +152,125 @@ export default function PaperManager() {
         <div className="text-[#111111] text-sm font-semibold">Loading exam papers...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {papers.map((p) => (
-            <div key={p._id} className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">{p.title}</h3>
+          {papers.map((p) => {
+            const paperLangs = p.allowedLanguages && p.allowedLanguages.length > 0 ? p.allowedLanguages : ['python', 'cpp', 'c', 'java', 'javascript'];
+            return (
+              <div key={p._id} className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">{p.title}</h3>
+                    <button
+                      onClick={() => handleDeletePaper(p._id)}
+                      className="p-1.5 text-rose-600 hover:text-rose-800 rounded-lg hover:bg-rose-100 transition-all"
+                      title="Delete Paper"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center space-x-3 text-xs text-[#313131] font-semibold mb-3">
+                    <span className="flex items-center space-x-1 font-mono">
+                      <Clock className="w-3.5 h-3.5 text-[#0E52FF]" />
+                      <span>{p.timeLimitMinutes} minutes</span>
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center space-x-1 font-mono">
+                      <Shuffle className="w-3.5 h-3.5 text-purple-700" />
+                      <span className="capitalize">{p.orderingMode} Order</span>
+                    </span>
+                  </div>
+
+                  {/* Allowed Languages Badges */}
+                  <div className="mb-4 space-y-1">
+                    <div className="text-[10px] text-slate-500 font-extrabold font-mono uppercase tracking-wider">Allowed Programming Languages:</div>
+                    <div className="flex flex-wrap gap-1.5 font-mono text-[10px]">
+                      {paperLangs.map((langKey) => {
+                        const opt = allLangOptions.find(o => o.id === langKey) || { label: langKey.toUpperCase(), color: 'bg-slate-100 text-slate-700 border-slate-200' };
+                        return (
+                          <span key={langKey} className={`px-2 py-0.5 rounded border font-bold uppercase ${opt.color}`}>
+                            {opt.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Questions Inset Box */}
+                  <div className="p-3.5 rounded-lg bg-white/80 border border-white text-xs text-[#111111] space-y-1.5 font-mono shadow-sm">
+                    <div className="text-[10px] text-[#555555] font-extrabold uppercase tracking-wider mb-1">Questions Included ({p.questions?.length || p.questionIds?.length || 0}):</div>
+                    {(p.questions || p.questionIds)?.map((q, idx) => {
+                      const diff = q.difficulty || 'Easy';
+                      return (
+                        <div key={q._id || idx} className="flex justify-between items-center text-xs py-1 border-b border-slate-100 last:border-0">
+                          <span className="truncate font-bold text-[#111111] max-w-[220px]">{idx + 1}. {q.title || 'Question'}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold uppercase ${
+                            diff === 'Easy' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                            diff === 'Medium' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                            'bg-rose-100 text-rose-800 border border-rose-300'
+                          }`}>
+                            {diff}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-200 flex justify-end">
                   <button
                     onClick={() => handleDeletePaper(p._id)}
-                    className="p-1.5 text-rose-600 hover:text-rose-800 rounded-lg hover:bg-rose-100 transition-all"
-                    title="Delete Paper"
+                    className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-
-                <div className="flex items-center space-x-3 text-xs text-[#313131] font-semibold mb-4">
-                  <span className="flex items-center space-x-1 font-mono">
-                    <Clock className="w-3.5 h-3.5 text-[#0E52FF]" />
-                    <span>{p.timeLimitMinutes} minutes</span>
-                  </span>
-                  <span>•</span>
-                  <span className="flex items-center space-x-1 font-mono">
-                    <Shuffle className="w-3.5 h-3.5 text-purple-700" />
-                    <span className="capitalize">{p.orderingMode} Order</span>
-                  </span>
-                </div>
-
-                {/* Questions Inset Box */}
-                <div className="p-3.5 rounded-lg bg-white/80 border border-white text-xs text-[#111111] space-y-1.5 font-mono shadow-sm">
-                  <div className="text-[10px] text-[#555555] font-extrabold uppercase tracking-wider mb-1">Questions Included ({p.questions?.length || p.questionIds?.length || 0}):</div>
-                  {(p.questions || p.questionIds)?.map((q, idx) => {
-                    const diff = q.difficulty || 'Easy';
-                    return (
-                      <div key={q._id || idx} className="flex justify-between items-center text-xs py-1 border-b border-slate-100 last:border-0">
-                        <span className="truncate font-bold text-[#111111] max-w-[220px]">{idx + 1}. {q.title || 'Question'}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-extrabold uppercase ${
-                          diff === 'Easy' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                          diff === 'Medium' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
-                          'bg-rose-100 text-rose-800 border border-rose-300'
-                        }`}>
-                          {diff}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
-
-              <div className="mt-6 pt-4 border-t border-slate-800/80 flex justify-end">
-                <button
-                  onClick={() => handleDeletePaper(p._id)}
-                  className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Create Paper Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel p-6 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-slate-800 shadow-2xl">
-            <h2 className="text-xl font-bold text-white mb-4">Assemble Exam Paper</h2>
+          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-white shadow-2xl text-[#111111] space-y-4">
+            <h2 className="font-['Playfair_Display',serif] text-2xl font-extrabold text-[#111111]">Assemble Exam Paper</h2>
             
             {error && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono font-bold">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleCreatePaper} className="space-y-4">
+            <form onSubmit={handleCreatePaper} className="space-y-4 font-sans">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Paper Title</label>
+                <label className="block text-xs font-mono font-bold text-[#111111] uppercase mb-1">Paper Title</label>
                 <input
                   type="text"
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Mid-Semester Coding Exam - CS201"
-                  className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm"
+                  className="w-full p-3 bg-white border border-[#E5E0D8] rounded-xl text-[#111111] font-mono text-xs font-bold focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Time Limit (Minutes)</label>
+                  <label className="block text-xs font-mono font-bold text-[#111111] uppercase mb-1">Time Limit (Minutes)</label>
                   <input
                     type="number"
                     value={timeLimitMinutes}
                     onChange={(e) => setTimeLimitMinutes(Number(e.target.value))}
-                    className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm"
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-xl text-[#111111] font-mono text-xs font-bold focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Question Ordering</label>
+                  <label className="block text-xs font-mono font-bold text-[#111111] uppercase mb-1">Question Ordering</label>
                   <select
                     value={orderingMode}
                     onChange={(e) => setOrderingMode(e.target.value)}
-                    className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm"
+                    className="w-full p-3 bg-white border border-[#E5E0D8] rounded-xl text-[#111111] font-mono text-xs font-bold focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
                   >
                     <option value="fixed">Fixed Order</option>
                     <option value="random">Randomized Order</option>
@@ -235,12 +279,43 @@ export default function PaperManager() {
                 </div>
               </div>
 
-              {/* Select Verified Questions */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-2">
-                  Select Verified Questions
+              {/* Select Allowed Programming Languages */}
+              <div className="space-y-2">
+                <label className="block text-xs font-mono font-bold text-[#111111] uppercase">
+                  Allowed Programming Languages (Select allowed for students):
                 </label>
-                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-xs">
+                  {allLangOptions.map((lang) => {
+                    const isChecked = allowedLanguages.includes(lang.id);
+                    return (
+                      <label
+                        key={lang.id}
+                        onClick={() => toggleLangOption(lang.id)}
+                        className={`p-2.5 rounded-lg border cursor-pointer flex items-center space-x-2 transition-all select-none ${
+                          isChecked 
+                            ? 'bg-[#0E52FF]/10 border-[#0E52FF] text-[#0E52FF] font-bold shadow-sm' 
+                            : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="rounded border-slate-300 text-[#0E52FF] focus:ring-0"
+                        />
+                        <span className="text-xs">{lang.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Select Verified Questions */}
+              <div className="space-y-2">
+                <label className="block text-xs font-mono font-bold text-[#111111] uppercase">
+                  Select Verified Questions:
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {questions.map((q) => {
                     const isSelected = selectedQuestionIds.includes(q._id);
                     return (
@@ -249,8 +324,8 @@ export default function PaperManager() {
                         onClick={() => toggleQuestionSelect(q)}
                         className={`p-3 rounded-xl border text-xs cursor-pointer flex items-center justify-between transition-all ${
                           isSelected
-                            ? 'bg-indigo-600/20 border-indigo-500 text-indigo-200'
-                            : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700'
+                            ? 'bg-[#0E52FF]/10 border-[#0E52FF] text-[#0E52FF] font-bold'
+                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
                         }`}
                       >
                         <div className="flex items-center space-x-3">
@@ -258,15 +333,15 @@ export default function PaperManager() {
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => {}}
-                            className="rounded border-slate-800 text-indigo-600 focus:ring-0"
+                            className="rounded border-slate-300 text-[#0E52FF] focus:ring-0"
                           />
-                          <span className="font-medium">{q.title}</span>
+                          <span className="font-bold">{q.title}</span>
                         </div>
                         <div className="flex items-center space-x-2">
                           {q.referenceSolutionVerified ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold">Verified</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">Verified</span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 font-semibold">Unverified</span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-100 text-amber-800 border border-amber-300">Unverified</span>
                           )}
                         </div>
                       </div>
@@ -275,17 +350,17 @@ export default function PaperManager() {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end space-x-3 pt-3 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 text-sm font-semibold rounded-xl"
+                  className="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-mono font-bold rounded-lg hover:bg-slate-200 uppercase tracking-wider"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-xl"
+                  className="px-5 py-2 bg-[#0E52FF] hover:bg-[#0642d9] text-white text-xs font-mono font-bold rounded-lg shadow-md uppercase tracking-wider"
                 >
                   Create Paper
                 </button>
@@ -295,7 +370,7 @@ export default function PaperManager() {
         </div>
       )}
 
-    </div>
+      </div>
     </div>
   );
 }

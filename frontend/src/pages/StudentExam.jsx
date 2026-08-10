@@ -579,6 +579,16 @@ export default function StudentExam() {
   }
 
   const questionsList = Array.isArray(examData.questions) ? examData.questions : [];
+  const allowedLanguages = Array.isArray(examData.allowedLanguages) && examData.allowedLanguages.length > 0
+    ? examData.allowedLanguages
+    : ['python', 'cpp', 'c', 'java', 'javascript'];
+
+  // Auto-switch selectedLanguage if current choice is not in allowedLanguages
+  useEffect(() => {
+    if (allowedLanguages.length > 0 && !allowedLanguages.includes(selectedLanguage)) {
+      setSelectedLanguage(allowedLanguages[0]);
+    }
+  }, [examData]);
   const currentQuestion = questionsList[activeQuestionIndex] || {
     _id: 'default_q',
     title: 'Coding Question',
@@ -829,11 +839,11 @@ export default function StudentExam() {
                   }}
                   className="bg-[#1e1e1e] border border-[#3e3e3e] text-xs text-white rounded px-2.5 py-1 focus:outline-none focus:border-[#FFA116]"
                 >
-                  <option value="python">Python 3</option>
-                  <option value="javascript">JavaScript (Node.js)</option>
-                  <option value="java">Java</option>
-                  <option value="c">C</option>
-                  <option value="cpp">C++</option>
+                  {allowedLanguages.includes('python') && <option value="python">Python 3</option>}
+                  {allowedLanguages.includes('cpp') && <option value="cpp">C++</option>}
+                  {allowedLanguages.includes('c') && <option value="c">C</option>}
+                  {allowedLanguages.includes('java') && <option value="java">Java</option>}
+                  {allowedLanguages.includes('javascript') && <option value="javascript">JavaScript (Node.js)</option>}
                 </select>
               </div>
 

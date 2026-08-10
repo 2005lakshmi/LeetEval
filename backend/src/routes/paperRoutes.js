@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
 // Create paper (Requires verified questions)
 router.post('/', async (req, res) => {
   try {
-    const { title, questionIds, orderingMode, timeLimitMinutes } = req.body;
+    const { title, questionIds, orderingMode, timeLimitMinutes, allowedLanguages } = req.body;
     if (!title || !questionIds || !Array.isArray(questionIds) || questionIds.length === 0) {
       return res.status(400).json({ message: 'Title and at least one question are required' });
     }
@@ -39,11 +39,16 @@ router.post('/', async (req, res) => {
       });
     }
 
+    const validLangs = Array.isArray(allowedLanguages) && allowedLanguages.length > 0
+      ? allowedLanguages
+      : ['python', 'cpp', 'c', 'java', 'javascript'];
+
     const paper = await Paper.create({
       title,
       questionIds,
       orderingMode: orderingMode || 'fixed',
       timeLimitMinutes: timeLimitMinutes || 60,
+      allowedLanguages: validLangs,
       createdBy: req.user._id
     });
 
