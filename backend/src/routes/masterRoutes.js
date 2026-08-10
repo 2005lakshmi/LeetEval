@@ -5,6 +5,8 @@ const AuditLog = require('../models/AuditLog');
 const { verifyAdminToken, verifyMasterOnly } = require('../middleware/authMiddleware');
 const { getDBStats } = require('../config/db');
 const { getActiveSocketsCount } = require('../socket/socketHandler');
+const { getQueueMetrics, clearSubmissionQueue, executeCode } = require('../services/queueService');
+const { executeCode: judge0ExecuteCode } = require('../services/judge0Service');
 
 router.use(verifyAdminToken, verifyMasterOnly);
 
@@ -83,11 +85,12 @@ router.put('/users/:id/status', async (req, res) => {
   }
 });
 
-// System health metrics
+// System health & telemetry metrics
 router.get('/health', async (req, res) => {
   try {
     const dbStats = await getDBStats();
     const activeSockets = getActiveSocketsCount();
+    const queueMetrics = await getQueueMetrics();
 
     res.json({
       system: {
@@ -97,10 +100,151 @@ router.get('/health', async (req, res) => {
       },
       database: dbStats,
       activeSockets,
-      redisQueue: {
-        concurrency: parseInt(process.env.WORKER_CONCURRENCY || '2', 10),
-        status: 'Active'
+      queueMetrics
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Emergency Clear Queue
+router.post('/clear-queue', async (req, res) => {
+  try {
+    const result = await clearSubmissionQueue();
+    await AuditLog.create({
+      actorId: req.user._id,
+      actorType: 'master',
+      action: 'EMERGENCY_CLEAR_QUEUE',
+      targetId: 'system_queue',
+      meta: { timestamp: new Date() }
+    });
+    res.json({ message: 'Execution queue emergency flushed successfully', result });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Interactive Multi-Language Stress & Benchmark Simulator
+router.post('/benchmark-simulate', async (req, res) => {
+  try {
+    const {
+      cCount = 0,
+      pythonCount = 0,
+      javaCount = 0,
+      cppCount = 0,
+      jsCount = 0,
+      cCode = '#include <stdio.h>\nint main(){ printf("OK\\n"); return 0; }',
+      pythonCode = 'print("OK")',
+      javaCode = 'public class Main { public static void main(String[] args){ System.out.println("OK"); } }',
+      cppCode = '#include <iostream>\nusing namespace std; int main(){ cout << "OK" << endl; return 0; }',
+      jsCode = 'console.log("OK");'
+    } = req.body;
+
+    const requestList = [];
+    const addJobs = (lang, code, count) => {
+      const c = Math.max(0, parseInt(count, 10) || 0);
+      for (let i = 0; i < c; i++) {
+        requestList.push({ language: lang, code, testcases: [{ input: '1', expectedOutput: 'OK' }] });
       }
+    };
+
+    addJobs('c', cCode, cCount);
+    addJobs('python', pythonCode, pythonCount);
+    addJobs('java', javaCode, javaCount);
+    addJobs('cpp', cppCode, cppCount);
+    addJobs('javascript', jsCode, jsCount);
+
+    if (requestList.length === 0) {
+      return res.status(400).json({ message: 'Please enter at least 1 execution count for any language' });
+    }
+
+    // Fisher-Yates Shuffle for true randomized execution ordering
+    for (let i = requestList.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [requestList[i], requestList[j]] = [requestList[j], requestList[i]];
+    }
+
+    const startMemory = process.memoryUsage().heapUsed;
+    const overallStart = process.hrtime.bigint();
+    const executionLogs = [];
+
+    // Run benchmark jobs in batches to evaluate throughput and microsecond latency
+    const batchSize = parseInt(process.env.WORKER_CONCURRENCY || '4', 10);
+    for (let i = 0; i < requestList.length; i += batchSize) {
+      const batch = requestList.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (job, bIdx) => {
+        const jobStart = process.hrtime.bigint();
+        try {
+          const res = await judge0ExecuteCode({
+            language: job.language,
+            code: job.code,
+            testcases: job.testcases,
+            timeLimitMs: 2000,
+            memoryLimitMb: 128
+          });
+          const jobEnd = process.hrtime.bigint();
+          const latencyMs = Number(jobEnd - jobStart) / 1000000;
+          return {
+            index: i + bIdx + 1,
+            language: job.language,
+            verdict: res.verdict || 'Accepted',
+            latencyMs: Number(latencyMs.toFixed(2)),
+            status: 'Success'
+          };
+        } catch (err) {
+          const jobEnd = process.hrtime.bigint();
+          const latencyMs = Number(jobEnd - jobStart) / 1000000;
+          return {
+            index: i + bIdx + 1,
+            language: job.language,
+            verdict: 'Error',
+            latencyMs: Number(latencyMs.toFixed(2)),
+            status: err.message
+          };
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      executionLogs.push(...batchResults);
+    }
+
+    const overallEnd = process.hrtime.bigint();
+    const totalBenchmarkMs = Number(overallEnd - overallStart) / 1000000;
+    const endMemory = process.memoryUsage().heapUsed;
+
+    const latencies = executionLogs.map(l => l.latencyMs);
+    const minWaitingMs = Math.min(...latencies);
+    const maxWaitingMs = Math.max(...latencies);
+    const avgWaitingMs = Number((latencies.reduce((a, b) => a + b, 0) / latencies.length).toFixed(2));
+    const throughputPerSec = Number(((requestList.length / totalBenchmarkMs) * 1000).toFixed(2));
+    const memoryDeltaMb = Number(((endMemory - startMemory) / 1024 / 1024).toFixed(2));
+
+    await AuditLog.create({
+      actorId: req.user._id,
+      actorType: 'master',
+      action: 'MULTI_LANG_STRESS_BENCHMARK',
+      targetId: 'benchmark_engine',
+      meta: {
+        totalExecutions: requestList.length,
+        minWaitingMs,
+        maxWaitingMs,
+        avgWaitingMs,
+        throughputPerSec
+      }
+    });
+
+    res.json({
+      message: 'Benchmark Stress Simulation Finished',
+      totalExecutions: requestList.length,
+      metrics: {
+        minWaitingMs,
+        maxWaitingMs,
+        avgWaitingMs,
+        totalBenchmarkMs: Number(totalBenchmarkMs.toFixed(2)),
+        throughputPerSec,
+        memoryDeltaMb
+      },
+      executionLogs
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -126,37 +270,32 @@ router.get('/audit-logs', async (req, res) => {
   }
 });
 
-// Worst-Case High Concurrency Load Simulation & Free Cloud Capacity Assessment
+// Worst-Case High Concurrency Load Simulation
 router.post('/simulate-load', async (req, res) => {
   try {
     const { studentCount = 60, scenario = 'burst_submission' } = req.body;
     const count = Math.max(1, parseInt(studentCount, 10));
 
-    // 1. Production Memory & Sandbox Execution Analysis
-    const memoryPerExecutionMb = 16; // Memory footprint per non-blocking process sandbox execution
+    const memoryPerExecutionMb = 16;
     const totalRamRequiredMb = Math.round(count * memoryPerExecutionMb);
     const heapUsedMb = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
     const heapTotalMb = Math.round(process.memoryUsage().heapTotal / 1024 / 1024);
-    const freeTierRamCapMb = 512; // Free Tier RAM Limit (e.g. Render Free Tier)
+    const freeTierRamCapMb = 512;
 
-    // 2. Queue Throughput & Concurrency Rate
     const workerConcurrency = parseInt(process.env.WORKER_CONCURRENCY || '4', 10);
     const avgExecutionMs = 450; 
     const batchCount = Math.ceil(count / workerConcurrency);
     const estTotalTimeMs = batchCount * avgExecutionMs;
 
-    // 3. Socket Traffic & Bandwidth Meter
     const packetsPerSec = scenario === 'burst_warning' ? count * 4 : count * 2;
     const bandwidthKbps = Math.round((packetsPerSec * 256) / 1024);
 
-    // 4. DB Storage Capacity & Atlas M0 Limits
     const dbStats = await getDBStats();
     const currentDbMb = parseFloat(dbStats.dataSizeMb || '0.00');
-    const atlasFreeLimitMb = 512; // MongoDB Atlas M0 Free Limit
+    const atlasFreeLimitMb = 512;
     const estNewDbMb = parseFloat((count * 0.02).toFixed(2));
     const remainingDbMb = (atlasFreeLimitMb - (currentDbMb + estNewDbMb)).toFixed(2);
 
-    // 5. Zero-Crash System Resilience Score & Verdict
     let isCrashProof = true;
     let verdict = 'ZERO-CRASH RESILIENT (100% READY)';
     let recommendations = 'System Design Controls: Rate limits, async sandboxes, and Socket auto-recovery guarantee zero-crash execution.';

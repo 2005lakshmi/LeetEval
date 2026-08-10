@@ -9,6 +9,7 @@ const concurrency = parseInt(process.env.WORKER_CONCURRENCY || '2', 10);
 let submissionQueue = null;
 let redisClient = null;
 let ioInstance = null;
+let activeCountInDirectMode = 0;
 
 function initQueue(io) {
   ioInstance = io;
@@ -46,55 +47,62 @@ function initQueue(io) {
 }
 
 async function processSubmissionJob(data) {
+  activeCountInDirectMode++;
   const { submissionId, language, code, customTemplate, testcases, timeLimitMs, memoryLimitMb, socketId, sessionId } = data;
 
-  const result = await executeCode({
-    language,
-    code,
-    customTemplate,
-    testcases,
-    timeLimitMs,
-    memoryLimitMb
-  });
+  try {
+    const result = await executeCode({
+      language,
+      code,
+      customTemplate,
+      testcases,
+      timeLimitMs,
+      memoryLimitMb
+    });
 
-  // Update submission in DB
-  let updatedSubmission = null;
-  if (submissionId) {
-    updatedSubmission = await Submission.findByIdAndUpdate(
-      submissionId,
-      {
+    // Update submission in DB
+    let updatedSubmission = null;
+    if (submissionId) {
+      updatedSubmission = await Submission.findByIdAndUpdate(
+        submissionId,
+        {
+          verdict: result.verdict,
+          rawOutput: result.rawOutput || '',
+          testResults: result.testResults,
+          totalRuntimeMs: result.totalRuntimeMs,
+          maxMemoryKb: result.maxMemoryKb || 0
+        },
+        { new: true }
+      );
+    }
+
+    // Emit socket event to student and live admin room
+    if (ioInstance) {
+      const payload = {
+        submissionId,
+        sessionId,
         verdict: result.verdict,
         rawOutput: result.rawOutput || '',
         testResults: result.testResults,
-        totalRuntimeMs: result.totalRuntimeMs,
-        maxMemoryKb: result.maxMemoryKb || 0
-      },
-      { new: true }
-    );
-  }
+        totalRuntimeMs: result.totalRuntimeMs
+      };
 
-  // Emit socket event to student and live admin room
-  if (ioInstance) {
-    const payload = {
-      submissionId,
-      sessionId,
-      verdict: result.verdict,
-      rawOutput: result.rawOutput || '',
-      testResults: result.testResults,
-      totalRuntimeMs: result.totalRuntimeMs
-    };
-
-    if (socketId) {
-      ioInstance.to(socketId).emit('submission_result', payload);
+      if (socketId) {
+        ioInstance.to(socketId).emit('submission_result', payload);
+      }
+      if (sessionId) {
+        ioInstance.to(`session_${sessionId}`).emit('submission_result', payload);
+      }
+      if (data.roomId) {
+        ioInstance.to(`room_admin_${data.roomId}`).emit('live_submission_update', payload);
+        ioInstance.to(`room_${data.roomId}`).emit('live_submission_update', payload);
+      }
     }
-    if (sessionId) {
-      ioInstance.to(`session_${sessionId}`).emit('submission_result', payload);
-    }
-    ioInstance.to(`room_admin_${data.roomId}`).emit('live_submission_update', payload);
-    ioInstance.to(`room_${data.roomId}`).emit('live_submission_update', payload);
-  }
 
-  return result;
+    return result;
+  } finally {
+    activeCountInDirectMode = Math.max(0, activeCountInDirectMode - 1);
+  }
 }
 
 async function addSubmissionToQueue(submissionData) {
@@ -111,4 +119,34 @@ async function addSubmissionToQueue(submissionData) {
   }
 }
 
-module.exports = { initQueue, addSubmissionToQueue };
+async function getQueueMetrics() {
+  if (submissionQueue && redisClient && redisClient.status === 'ready') {
+    const waiting = await submissionQueue.getWaitingCount();
+    const active = await submissionQueue.getActiveCount();
+    const completed = await submissionQueue.getCompletedCount();
+    const failed = await submissionQueue.getFailedCount();
+    return { waiting, active, completed, failed, mode: 'BullMQ Queue Engine' };
+  }
+  return {
+    waiting: 0,
+    active: activeCountInDirectMode,
+    completed: 0,
+    failed: 0,
+    mode: 'Direct Worker Engine'
+  };
+}
+
+async function clearSubmissionQueue() {
+  if (submissionQueue && redisClient && redisClient.status === 'ready') {
+    await submissionQueue.drain();
+    await submissionQueue.clean(0, 1000, 'wait');
+    await submissionQueue.clean(0, 1000, 'active');
+  }
+  activeCountInDirectMode = 0;
+  if (ioInstance) {
+    ioInstance.emit('queue_cleared', { timestamp: new Date(), message: 'Execution queue emergency flushed by Master Admin' });
+  }
+  return { success: true, timestamp: new Date() };
+}
+
+module.exports = { initQueue, addSubmissionToQueue, getQueueMetrics, clearSubmissionQueue, processSubmissionJob };

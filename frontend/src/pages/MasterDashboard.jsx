@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
-import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare } from 'lucide-react';
+import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart } from 'lucide-react';
 
 export default function MasterDashboard() {
   const [users, setUsers] = useState([]);
   const [health, setHealth] = useState(null);
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [clearingQueue, setClearingQueue] = useState(false);
 
   // Edit User Modal State
   const [editUser, setEditUser] = useState(null);
@@ -19,9 +20,25 @@ export default function MasterDashboard() {
   const [simulating, setSimulating] = useState(false);
   const [simResult, setSimResult] = useState(null);
 
+  // Interactive Multi-Language Benchmark Stress Simulator State
+  const [benchmarking, setBenchmarking] = useState(false);
+  const [benchResult, setBenchResult] = useState(null);
+  const [benchForm, setBenchForm] = useState({
+    cCount: 5,
+    pythonCount: 15,
+    javaCount: 5,
+    cppCount: 5,
+    jsCount: 0,
+    cCode: '#include <stdio.h>\nint main() {\n  printf("OK\\n");\n  return 0;\n}',
+    pythonCode: 'print("OK")',
+    javaCode: 'public class Main {\n  public static void main(String[] args) {\n    System.out.println("OK");\n  }\n}',
+    cppCode: '#include <iostream>\nusing namespace std;\nint main() {\n  cout << "OK" << endl;\n  return 0;\n}',
+    jsCode: 'console.log("OK");'
+  });
+
   useEffect(() => {
     fetchMasterData();
-    const interval = setInterval(fetchMasterData, 4000);
+    const interval = setInterval(fetchMasterData, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -44,6 +61,21 @@ export default function MasterDashboard() {
     }
   };
 
+  const handleClearQueue = async () => {
+    if (!window.confirm('Emergency Clear Queue: Are you sure you want to flush all pending & active execution jobs in the queue?')) return;
+    setClearingQueue(true);
+    try {
+      const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
+      const res = await axios.post('/api/master/clear-queue', {}, authHeader);
+      alert(res.data.message || 'Execution queue emergency flushed.');
+      fetchMasterData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to clear queue');
+    } finally {
+      setClearingQueue(false);
+    }
+  };
+
   const handleRunTrafficSimulation = async (e) => {
     if (e) e.preventDefault();
     setSimulating(true);
@@ -61,6 +93,22 @@ export default function MasterDashboard() {
       alert(err.response?.data?.message || 'Simulation execution failed');
     } finally {
       setSimulating(false);
+    }
+  };
+
+  const handleRunMultiLangBenchmark = async (e) => {
+    if (e) e.preventDefault();
+    setBenchmarking(true);
+    setBenchResult(null);
+
+    try {
+      const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
+      const res = await axios.post('/api/master/benchmark-simulate', benchForm, authHeader);
+      setBenchResult(res.data);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Multi-language benchmark failed');
+    } finally {
+      setBenchmarking(false);
     }
   };
 
@@ -111,6 +159,16 @@ export default function MasterDashboard() {
   const pendingUsers = users.filter((u) => u.status === 'pending');
   const activeSocketsCount = health?.activeSockets || 0;
 
+  // RAM Allocation Math
+  const heapUsedMb = Math.round((health?.system?.memoryUsage?.heapUsed || 0) / 1024 / 1024);
+  const rssMb = Math.round((health?.system?.memoryUsage?.rss || 0) / 1024 / 1024);
+  const freeCapMb = 512; // Render Free Tier Limit
+  const freeRamMb = Math.max(0, freeCapMb - rssMb);
+  const ramUsedPct = Math.min(100, Math.round((rssMb / freeCapMb) * 100));
+
+  // SVG Pie Chart Calculation
+  const strokeDashoffset = 283 - (283 * ramUsedPct) / 100;
+
   return (
     <div className="min-h-screen bg-[#111111] text-[#FFFFFF] font-['Source_Sans_3',sans-serif] relative overflow-hidden select-none pb-12">
       
@@ -141,21 +199,283 @@ export default function MasterDashboard() {
                 <ShieldCheck className="w-6 h-6 text-[#0E52FF]" />
               </div>
               <h1 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight">
-                Master Flow Regulator & Stress Simulator
+                Master Telemetry, Queue Controls & Benchmark Simulator
               </h1>
             </div>
             <p className="text-sm text-[#111111] font-semibold leading-relaxed max-w-3xl">
-              Simulate worst-case concurrent candidate traffic (code submissions, WebSocket broadcasts, RAM overhead), verify process handling metrics, and manage faculty access credentials.
+              Monitor live server RAM allocation pie charts, track queue workloads, execute emergency queue flushes, and simulate multi-language code execution latency before student exams.
             </p>
           </div>
 
           <div className="flex-shrink-0 flex items-center space-x-2 px-4 py-2.5 bg-emerald-100 border border-emerald-300 rounded-lg text-emerald-900 font-mono font-bold text-xs uppercase tracking-wider shadow-sm">
             <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-            <span>High-Concurrency Engine Ready</span>
+            <span>High-Concurrency Engine Active</span>
           </div>
         </div>
 
-        {/* Worst-Case Concurrency & Candidate Stress Simulator Form */}
+        {/* Live Server RAM Allocation Pie Chart & Queue Dashboard Telemetry Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Server RAM Usage Pie Chart Card */}
+          <div className="rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center space-x-2">
+                <PieChart className="w-5 h-5 text-[#0E52FF]" />
+                <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">
+                  Live Render RAM Allocation
+                </h2>
+              </div>
+              <span className="text-xs font-mono font-bold text-[#0E52FF]">{rssMb} MB / {freeCapMb} MB</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-around gap-6 py-2">
+              {/* Circular Gauge Pie Chart */}
+              <div className="relative w-36 h-36 flex items-center justify-center">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="45" stroke="#E5E0D8" strokeWidth="10" fill="transparent" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="45"
+                    stroke={ramUsedPct > 80 ? '#e11d48' : '#0E52FF'}
+                    strokeWidth="10"
+                    fill="transparent"
+                    strokeDasharray="283"
+                    strokeDashoffset={strokeDashoffset}
+                    strokeLinecap="round"
+                    className="transition-all duration-700 ease-out"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center justify-center text-center">
+                  <span className="text-2xl font-extrabold font-mono text-[#111111]">{ramUsedPct}%</span>
+                  <span className="text-[10px] font-mono font-bold text-[#555555] uppercase">RAM USED</span>
+                </div>
+              </div>
+
+              <div className="space-y-3 font-mono text-xs w-full sm:w-auto">
+                <div className="flex items-center justify-between space-x-4 p-2 rounded bg-slate-50 border border-slate-200">
+                  <span className="flex items-center space-x-2 text-slate-700 font-bold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#0E52FF]"></span>
+                    <span>Node.js Process RSS:</span>
+                  </span>
+                  <span className="font-extrabold text-[#0E52FF]">{rssMb} MB</span>
+                </div>
+                <div className="flex items-center justify-between space-x-4 p-2 rounded bg-slate-50 border border-slate-200">
+                  <span className="flex items-center space-x-2 text-slate-700 font-bold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span>V8 Heap Used:</span>
+                  </span>
+                  <span className="font-extrabold text-emerald-700">{heapUsedMb} MB</span>
+                </div>
+                <div className="flex items-center justify-between space-x-4 p-2 rounded bg-slate-50 border border-slate-200">
+                  <span className="flex items-center space-x-2 text-slate-700 font-bold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <span>Free Container RAM:</span>
+                  </span>
+                  <span className="font-extrabold text-amber-800">{freeRamMb} MB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Queue Telemetry & Emergency Clear Queue Card */}
+          <div className="rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center space-x-2">
+                <Layers className="w-5 h-5 text-purple-700" />
+                <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">
+                  Execution Queue Telemetry
+                </h2>
+              </div>
+              <span className="text-xs font-mono font-bold text-purple-700 uppercase">{health?.queueMetrics?.mode || 'Active'}</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 font-mono">
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                <div className="text-[10px] font-bold text-[#555555] uppercase">Active Workers</div>
+                <div className="text-2xl font-extrabold text-[#0E52FF]">{health?.queueMetrics?.active || 0}</div>
+                <div className="text-[10px] text-slate-500">Executing code</div>
+              </div>
+              <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-center">
+                <div className="text-[10px] font-bold text-[#555555] uppercase">Queued Submissions</div>
+                <div className="text-2xl font-extrabold text-amber-700">{health?.queueMetrics?.waiting || 0}</div>
+                <div className="text-[10px] text-slate-500">Waiting in line</div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+              <div className="text-xs font-mono text-[#555555]">
+                WebSocket Concurrency: <strong className="text-[#111111]">{activeSocketsCount} active sockets</strong>
+              </div>
+              <button
+                onClick={handleClearQueue}
+                disabled={clearingQueue}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-mono font-bold text-xs uppercase tracking-wider rounded-lg shadow-md flex items-center space-x-1.5 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4 text-white" />
+                <span>{clearingQueue ? 'FLUSHING QUEUE...' : 'CLEAR QUEUE (EMERGENCY)'}</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Interactive Multi-Language Stress & Benchmark Simulator */}
+        <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div className="flex items-center space-x-2">
+              <Zap className="w-5 h-5 text-[#0E52FF]" />
+              <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">
+                Multi-Language Stress & Execution Latency Benchmark Simulator
+              </h2>
+            </div>
+            <span className="text-xs font-mono font-bold text-[#555555]">Test platform throughput & response time before exams</span>
+          </div>
+
+          <form onSubmit={handleRunMultiLangBenchmark} className="space-y-5">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono">
+              <div>
+                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">C Runs</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={benchForm.cCount}
+                  onChange={(e) => setBenchForm({ ...benchForm, cCount: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">Python Runs</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={benchForm.pythonCount}
+                  onChange={(e) => setBenchForm({ ...benchForm, pythonCount: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">Java Runs</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={benchForm.javaCount}
+                  onChange={(e) => setBenchForm({ ...benchForm, javaCount: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">C++ Runs</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={benchForm.cppCount}
+                  onChange={(e) => setBenchForm({ ...benchForm, cppCount: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-[#111111] uppercase mb-1">JS Runs</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={benchForm.jsCount}
+                  onChange={(e) => setBenchForm({ ...benchForm, jsCount: e.target.value })}
+                  className="w-full p-2.5 bg-white border border-[#E5E0D8] rounded-lg text-[#111111] font-bold text-xs focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={benchmarking}
+                className="py-3 px-6 bg-[#0E52FF] hover:bg-[#0642d9] text-white font-mono font-bold text-xs uppercase tracking-wider rounded-lg shadow-xl shadow-[#0E52FF]/30 flex items-center space-x-2 transition-all active:scale-[0.99] disabled:opacity-50"
+              >
+                {benchmarking ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 text-white animate-spin" />
+                    <span>STRESS BENCHMARKING WORKER POOL...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 text-white fill-white" />
+                    <span>RUN RANDOMIZED MULTI-LANGUAGE BENCHMARK</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+
+          {/* Benchmark Results Telemetry Cards */}
+          {benchResult && (
+            <div className="pt-4 border-t border-slate-200 space-y-4 font-mono">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                
+                <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-950 space-y-1 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-emerald-800">Minimum Latency</div>
+                  <div className="text-2xl font-extrabold text-emerald-700">{benchResult.metrics?.minWaitingMs} ms</div>
+                  <div className="text-[10px] font-bold">Fastest single execution</div>
+                </div>
+
+                <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-950 space-y-1 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-rose-800">Maximum Latency</div>
+                  <div className="text-2xl font-extrabold text-rose-700">{benchResult.metrics?.maxWaitingMs} ms</div>
+                  <div className="text-[10px] font-bold">Worst-case single execution</div>
+                </div>
+
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-950 space-y-1 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-blue-800">Average Waiting Time</div>
+                  <div className="text-2xl font-extrabold text-[#0E52FF]">{benchResult.metrics?.avgWaitingMs} ms</div>
+                  <div className="text-[10px] font-bold">Mean execution response</div>
+                </div>
+
+                <div className="p-4 rounded-lg bg-purple-50 border border-purple-200 text-purple-950 space-y-1 shadow-sm">
+                  <div className="text-[10px] font-bold uppercase text-purple-800">Throughput Rate</div>
+                  <div className="text-2xl font-extrabold text-purple-700">{benchResult.metrics?.throughputPerSec} / sec</div>
+                  <div className="text-[10px] font-bold">RAM Delta: {benchResult.metrics?.memoryDeltaMb} MB</div>
+                </div>
+
+              </div>
+
+              {/* Execution Log Table */}
+              <div className="overflow-x-auto max-h-60 rounded-lg border border-slate-200 shadow-sm">
+                <table className="w-full text-left text-xs text-[#111111]">
+                  <thead className="bg-[#FAF8F5] uppercase font-mono font-extrabold border-b border-slate-200">
+                    <tr>
+                      <th className="p-2.5">Run #</th>
+                      <th className="p-2.5">Language</th>
+                      <th className="p-2.5">Verdict</th>
+                      <th className="p-2.5">Latency</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white font-mono text-xs">
+                    {benchResult.executionLogs?.map((log, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-2.5 font-bold">{log.index}</td>
+                        <td className="p-2.5 uppercase font-bold text-[#0E52FF]">{log.language}</td>
+                        <td className="p-2.5">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            {log.verdict}
+                          </span>
+                        </td>
+                        <td className="p-2.5 font-bold text-[#111111]">{log.latencyMs} ms</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Candidate Load & Worst-Case Execution Simulator Form */}
         <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-5">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div className="flex items-center space-x-2">
@@ -237,128 +557,6 @@ export default function MasterDashboard() {
                   Simulated Candidates: {simResult.studentCount}
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                
-                <div className="p-4 rounded-lg bg-white border border-slate-200 text-[#111111] space-y-1 shadow-sm font-mono">
-                  <div className="text-[10px] font-bold text-[#555555] uppercase">Total Code Execution Time</div>
-                  <div className="text-xl font-extrabold text-[#0E52FF]">{(simResult.metrics?.estimatedTotalExecutionMs / 1000).toFixed(2)} sec</div>
-                  <div className="text-[10px] text-[#313131] font-semibold">{simResult.metrics?.avgQueueTimePerStudentMs}ms avg queue / candidate</div>
-                </div>
-
-                <div className="p-4 rounded-lg bg-white border border-slate-200 text-[#111111] space-y-1 shadow-sm font-mono">
-                  <div className="text-[10px] font-bold text-[#555555] uppercase">RAM Allocation vs Free Cap</div>
-                  <div className="text-xl font-extrabold text-purple-700">{simResult.metrics?.totalRamRequiredMb} MB RAM</div>
-                  <div className="text-[10px] text-[#313131] font-semibold">Heap: {simResult.metrics?.currentHeapUsedMb}MB / Cap: {simResult.metrics?.freeTierRamCapMb}MB</div>
-                </div>
-
-                <div className="p-4 rounded-lg bg-white border border-slate-200 text-[#111111] space-y-1 shadow-sm font-mono">
-                  <div className="text-[10px] font-bold text-[#555555] uppercase">WebSocket Packet Rate</div>
-                  <div className="text-xl font-extrabold text-emerald-700">{simResult.metrics?.packetsPerSec} Packets/sec</div>
-                  <div className="text-[10px] text-[#313131] font-semibold">{simResult.metrics?.bandwidthKbps} KB/sec Broadcast Overhead</div>
-                </div>
-
-                <div className="p-4 rounded-lg bg-white border border-slate-200 text-[#111111] space-y-1 shadow-sm font-mono">
-                  <div className="text-[10px] font-bold text-[#555555] uppercase">Atlas M0 DB Free Buffer</div>
-                  <div className="text-xl font-extrabold text-amber-800">{simResult.metrics?.remainingDbMb} MB Free</div>
-                  <div className="text-[10px] text-[#313131] font-semibold">Used: {simResult.metrics?.currentDbMb}MB (+{simResult.metrics?.estNewDbMb}MB)</div>
-                </div>
-
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Measuring Mechanisms & System Flow Telemetry Grid */}
-        {health && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            
-            <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#313131]">Socket Stream Flow</span>
-                <div className="p-2 rounded bg-emerald-500/10 text-emerald-700"><Radio className="w-5 h-5 animate-pulse" /></div>
-              </div>
-              <div>
-                <div className="font-mono text-3xl font-extrabold text-[#111111] tracking-tight">{activeSocketsCount} Streams</div>
-                <div className="text-xs text-emerald-700 font-bold mt-1">Live active WebSocket clients</div>
-              </div>
-            </div>
-
-            <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#313131]">Queue Rate Regulator</span>
-                <div className="p-2 rounded bg-purple-500/10 text-purple-700"><Cpu className="w-5 h-5" /></div>
-              </div>
-              <div>
-                <div className="font-mono text-3xl font-extrabold text-[#111111] tracking-tight">{health.redisQueue?.concurrency || 2} Workers</div>
-                <div className="text-xs text-purple-700 font-bold mt-1">Parallel execution channels</div>
-              </div>
-            </div>
-
-            <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#313131]">Database Throughput</span>
-                <div className="p-2 rounded bg-[#0E52FF]/10 text-[#0E52FF]"><Database className="w-5 h-5" /></div>
-              </div>
-              <div>
-                <div className="font-mono text-3xl font-extrabold text-[#111111] tracking-tight">{health.database?.dataSizeMb || '0.00'} MB</div>
-                <div className="text-xs text-[#0E52FF] font-bold mt-1">{health.database?.objectsCount || 0} active objects</div>
-              </div>
-            </div>
-
-            <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-bold uppercase tracking-wider text-[#313131]">Engine Uptime Telemetry</span>
-                <div className="p-2 rounded bg-amber-500/10 text-amber-800"><Activity className="w-5 h-5" /></div>
-              </div>
-              <div>
-                <div className="font-mono text-3xl font-extrabold text-[#111111] tracking-tight">{Math.floor(health.system?.uptime / 60 || 0)} mins</div>
-                <div className="text-xs text-amber-800 font-bold mt-1">Node {health.system?.nodeVersion} Engine</div>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* Pending Registrations Section */}
-        <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111] flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-700" />
-              <span>Pending Faculty Registrations ({pendingUsers.length})</span>
-            </h2>
-          </div>
-
-          {pendingUsers.length === 0 ? (
-            <div className="p-4 bg-white/80 rounded-lg border border-slate-200 text-xs text-[#555555] font-semibold text-center">
-              ✓ No pending faculty registration requests. All accounts verified!
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {pendingUsers.map((u) => (
-                <div key={u._id} className="p-4 rounded-lg bg-white border border-slate-200 shadow-sm flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-[#111111] text-sm">{u.name}</div>
-                    <div className="text-xs text-[#555555] font-mono mt-0.5">{u.email} • Registered {new Date(u.createdAt).toLocaleDateString()}</div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleUpdateUserStatus(u._id, 'approved')}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-mono font-bold uppercase tracking-wider shadow-sm flex items-center space-x-1"
-                    >
-                      <UserCheck className="w-4 h-4" />
-                      <span>Approve Account</span>
-                    </button>
-                    <button
-                      onClick={() => handleUpdateUserStatus(u._id, 'rejected')}
-                      className="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center space-x-1"
-                    >
-                      <UserX className="w-4 h-4" />
-                      <span>Reject</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </div>
