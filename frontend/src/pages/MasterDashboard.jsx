@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
-import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X } from 'lucide-react';
+import CodeEditor from '../components/CodeEditor';
+import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X, Copy } from 'lucide-react';
 
 export default function MasterDashboard() {
   const [users, setUsers] = useState([]);
@@ -17,6 +18,12 @@ export default function MasterDashboard() {
   // Maximize Language Code Modal State
   const [expandedLanguage, setExpandedLanguage] = useState(null); // 'c' | 'python' | 'java' | 'cpp' | 'js' | null
   const [selectedBenchmarkLog, setSelectedBenchmarkLog] = useState(null);
+
+  // Floating Minimizable / Maximizable Terminal Console State
+  const [showFloatingTerminal, setShowFloatingTerminal] = useState(false);
+  const [isTerminalMinimized, setIsTerminalMinimized] = useState(false);
+  const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
+  const [terminalLogs, setTerminalLogs] = useState([]);
 
   // Interactive Concurrency & Stress Simulation State
   const [studentInputCount, setStudentInputCount] = useState(60);
@@ -104,13 +111,29 @@ export default function MasterDashboard() {
     if (e) e.preventDefault();
     setBenchmarking(true);
     setBenchResult(null);
+    setShowFloatingTerminal(true);
+    setIsTerminalMinimized(false);
+    setTerminalLogs([
+      `[${new Date().toLocaleTimeString()}] ▶ Initializing multi-language stress benchmark simulation...`,
+      `[${new Date().toLocaleTimeString()}] ▶ Dispatching C (${benchForm.cCount}), Python (${benchForm.pythonCount}), Java (${benchForm.javaCount}), C++ (${benchForm.cppCount}), JS (${benchForm.jsCount}) executions to worker pool...`
+    ]);
 
     try {
       const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
       const res = await axios.post('/api/master/benchmark-simulate', benchForm, authHeader);
       setBenchResult(res.data);
+
+      const logs = (res.data.executionLogs || []).map(
+        (l) => `[${new Date().toLocaleTimeString()}] ▶ RUN #${l.index} [${l.language.toUpperCase()}] -> Verdict: ${l.verdict} | Latency: ${l.latencyMs}ms | Output: "${(l.rawOutput || '').trim().replace(/\n/g, ' ')}"`
+      );
+      const metrics = res.data.metrics || {};
+      const summary = `[${new Date().toLocaleTimeString()}] ✔ BENCHMARK COMPLETE: ${res.data.totalExecutions} jobs. Min: ${metrics.minWaitingMs}ms, Max: ${metrics.maxWaitingMs}ms, Avg: ${metrics.avgWaitingMs}ms, Throughput: ${metrics.throughputPerSec}/sec, RAM Delta: ${metrics.memoryDeltaMb}MB`;
+
+      setTerminalLogs((prev) => [...prev, ...logs, summary]);
     } catch (err) {
-      alert(err.response?.data?.message || 'Multi-language benchmark failed');
+      const errMsg = err.response?.data?.message || err.message || 'Multi-language benchmark failed';
+      setTerminalLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ❌ ERROR: ${errMsg}`]);
+      alert(errMsg);
     } finally {
       setBenchmarking(false);
     }
@@ -173,11 +196,11 @@ export default function MasterDashboard() {
   const strokeDashoffset = 283 - (283 * ramUsedPct) / 100;
 
   const langConfigs = {
-    c: { title: 'C Language Benchmark', color: 'text-[#0E52FF]', codeKey: 'cCode', countKey: 'cCount' },
-    python: { title: 'Python Benchmark', color: 'text-amber-700', codeKey: 'pythonCode', countKey: 'pythonCount' },
-    java: { title: 'Java Benchmark', color: 'text-rose-700', codeKey: 'javaCode', countKey: 'javaCount' },
-    cpp: { title: 'C++ Benchmark', color: 'text-purple-700', codeKey: 'cppCode', countKey: 'cppCount' },
-    js: { title: 'JavaScript Benchmark', color: 'text-amber-600', codeKey: 'jsCode', countKey: 'jsCount' }
+    c: { title: 'C Language Benchmark', color: 'text-[#0E52FF]', codeKey: 'cCode', countKey: 'cCount', editorLang: 'cpp' },
+    python: { title: 'Python Benchmark', color: 'text-amber-700', codeKey: 'pythonCode', countKey: 'pythonCount', editorLang: 'python' },
+    java: { title: 'Java Benchmark', color: 'text-rose-700', codeKey: 'javaCode', countKey: 'javaCount', editorLang: 'java' },
+    cpp: { title: 'C++ Benchmark', color: 'text-purple-700', codeKey: 'cppCode', countKey: 'cppCount', editorLang: 'cpp' },
+    js: { title: 'JavaScript Benchmark', color: 'text-amber-600', codeKey: 'jsCode', countKey: 'jsCount', editorLang: 'javascript' }
   };
 
   return (
@@ -347,17 +370,17 @@ export default function MasterDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               
               {/* C Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
+              <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-[#0E52FF] uppercase">C Language Benchmark</span>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
                       onClick={() => setExpandedLanguage('c')}
-                      className="p-1 text-slate-500 hover:text-[#0E52FF] hover:bg-slate-200 rounded transition-colors"
+                      className="p-1.5 text-slate-500 hover:text-[#0E52FF] hover:bg-slate-100 rounded transition-colors"
                       title="Maximize Editor Modal"
                     >
-                      <Maximize2 className="w-3.5 h-3.5" />
+                      <Maximize2 className="w-4 h-4" />
                     </button>
                     <div className="flex items-center space-x-1">
                       <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
@@ -372,28 +395,28 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C Source Code Snippet:</label>
-                <textarea
-                  rows={4}
-                  value={benchForm.cCode}
-                  onChange={(e) => setBenchForm({ ...benchForm, cCode: e.target.value })}
-                  placeholder="Paste C code here..."
-                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
-                />
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C Code Editor:</label>
+                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                  <CodeEditor
+                    value={benchForm.cCode}
+                    onChange={(val) => setBenchForm({ ...benchForm, cCode: val })}
+                    language="cpp"
+                  />
+                </div>
               </div>
 
               {/* Python Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
+              <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-amber-700 uppercase">Python Benchmark</span>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
                       onClick={() => setExpandedLanguage('python')}
-                      className="p-1 text-slate-500 hover:text-amber-700 hover:bg-slate-200 rounded transition-colors"
+                      className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-slate-100 rounded transition-colors"
                       title="Maximize Editor Modal"
                     >
-                      <Maximize2 className="w-3.5 h-3.5" />
+                      <Maximize2 className="w-4 h-4" />
                     </button>
                     <div className="flex items-center space-x-1">
                       <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
@@ -408,28 +431,28 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Python Source Code Snippet:</label>
-                <textarea
-                  rows={4}
-                  value={benchForm.pythonCode}
-                  onChange={(e) => setBenchForm({ ...benchForm, pythonCode: e.target.value })}
-                  placeholder="Paste Python code here..."
-                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
-                />
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Python Code Editor:</label>
+                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                  <CodeEditor
+                    value={benchForm.pythonCode}
+                    onChange={(val) => setBenchForm({ ...benchForm, pythonCode: val })}
+                    language="python"
+                  />
+                </div>
               </div>
 
               {/* Java Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
+              <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-rose-700 uppercase">Java Benchmark</span>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
                       onClick={() => setExpandedLanguage('java')}
-                      className="p-1 text-slate-500 hover:text-rose-700 hover:bg-slate-200 rounded transition-colors"
+                      className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-slate-100 rounded transition-colors"
                       title="Maximize Editor Modal"
                     >
-                      <Maximize2 className="w-3.5 h-3.5" />
+                      <Maximize2 className="w-4 h-4" />
                     </button>
                     <div className="flex items-center space-x-1">
                       <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
@@ -444,28 +467,28 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Java Source Code Snippet:</label>
-                <textarea
-                  rows={4}
-                  value={benchForm.javaCode}
-                  onChange={(e) => setBenchForm({ ...benchForm, javaCode: e.target.value })}
-                  placeholder="Paste Java code here..."
-                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
-                />
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Java Code Editor:</label>
+                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                  <CodeEditor
+                    value={benchForm.javaCode}
+                    onChange={(val) => setBenchForm({ ...benchForm, javaCode: val })}
+                    language="java"
+                  />
+                </div>
               </div>
 
               {/* C++ Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
+              <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-purple-700 uppercase">C++ Benchmark</span>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
                       onClick={() => setExpandedLanguage('cpp')}
-                      className="p-1 text-slate-500 hover:text-purple-700 hover:bg-slate-200 rounded transition-colors"
+                      className="p-1.5 text-slate-500 hover:text-purple-700 hover:bg-slate-100 rounded transition-colors"
                       title="Maximize Editor Modal"
                     >
-                      <Maximize2 className="w-3.5 h-3.5" />
+                      <Maximize2 className="w-4 h-4" />
                     </button>
                     <div className="flex items-center space-x-1">
                       <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
@@ -480,28 +503,28 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C++ Source Code Snippet:</label>
-                <textarea
-                  rows={4}
-                  value={benchForm.cppCode}
-                  onChange={(e) => setBenchForm({ ...benchForm, cppCode: e.target.value })}
-                  placeholder="Paste C++ code here..."
-                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
-                />
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C++ Code Editor:</label>
+                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                  <CodeEditor
+                    value={benchForm.cppCode}
+                    onChange={(val) => setBenchForm({ ...benchForm, cppCode: val })}
+                    language="cpp"
+                  />
+                </div>
               </div>
 
               {/* JavaScript Code Card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 relative group">
+              <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
                   <span className="text-xs font-extrabold text-amber-600 uppercase">JavaScript Benchmark</span>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
                       onClick={() => setExpandedLanguage('js')}
-                      className="p-1 text-slate-500 hover:text-amber-600 hover:bg-slate-200 rounded transition-colors"
+                      className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-slate-100 rounded transition-colors"
                       title="Maximize Editor Modal"
                     >
-                      <Maximize2 className="w-3.5 h-3.5" />
+                      <Maximize2 className="w-4 h-4" />
                     </button>
                     <div className="flex items-center space-x-1">
                       <span className="text-[10px] text-slate-500 font-bold uppercase">Runs:</span>
@@ -516,14 +539,14 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">JS Source Code Snippet:</label>
-                <textarea
-                  rows={4}
-                  value={benchForm.jsCode}
-                  onChange={(e) => setBenchForm({ ...benchForm, jsCode: e.target.value })}
-                  placeholder="Paste JS code here..."
-                  className="w-full p-2.5 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed resize-y"
-                />
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">JS Code Editor:</label>
+                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                  <CodeEditor
+                    value={benchForm.jsCode}
+                    onChange={(val) => setBenchForm({ ...benchForm, jsCode: val })}
+                    language="javascript"
+                  />
+                </div>
               </div>
 
             </div>
@@ -657,15 +680,15 @@ export default function MasterDashboard() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-hidden flex flex-col">
-                <label className="block text-xs font-mono font-bold text-slate-500 uppercase mb-2">Source Code Snippet:</label>
-                <textarea
-                  rows={16}
-                  value={benchForm[langConfigs[expandedLanguage].codeKey]}
-                  onChange={(e) => setBenchForm({ ...benchForm, [langConfigs[expandedLanguage].codeKey]: e.target.value })}
-                  placeholder="Paste or write code here..."
-                  className="w-full flex-1 p-4 bg-slate-900 text-emerald-400 font-mono text-xs rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0E52FF] leading-relaxed select-text"
-                />
+              <div className="flex-1 overflow-hidden flex flex-col h-96">
+                <label className="block text-xs font-mono font-bold text-slate-500 uppercase mb-2">Source Code Editor:</label>
+                <div className="flex-1 rounded-xl overflow-hidden border border-slate-200">
+                  <CodeEditor
+                    value={benchForm[langConfigs[expandedLanguage].codeKey]}
+                    onChange={(val) => setBenchForm({ ...benchForm, [langConfigs[expandedLanguage].codeKey]: val })}
+                    language={langConfigs[expandedLanguage].editorLang}
+                  />
+                </div>
               </div>
 
               <div className="flex justify-end pt-2">
@@ -719,6 +742,79 @@ export default function MasterDashboard() {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Floating Minimizable / Maximizable Terminal Console Window */}
+        {showFloatingTerminal && (
+          <div className={`fixed z-50 transition-all duration-300 ease-in-out shadow-2xl rounded-2xl border border-slate-700 overflow-hidden bg-[#141414] text-[#00b8a3] font-mono select-text ${
+            isTerminalMaximized 
+              ? 'inset-4 w-auto h-auto' 
+              : isTerminalMinimized 
+                ? 'bottom-4 right-4 w-96 h-12' 
+                : 'bottom-4 right-4 w-[580px] h-[340px]'
+          }`}>
+            {/* Terminal Top Window Bar */}
+            <div className="h-10 bg-[#222222] border-b border-slate-700 px-4 flex items-center justify-between select-none">
+              <div className="flex items-center space-x-2">
+                <Terminal className="w-4 h-4 text-[#00b8a3]" />
+                <span className="font-bold text-xs text-white uppercase tracking-wider">Live Execution Floating Terminal</span>
+                {benchmarking && (
+                  <span className="flex items-center space-x-1 text-[10px] text-amber-400 font-bold">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    <span>RUNNING...</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-1.5">
+                <button
+                  onClick={() => setIsTerminalMinimized(!isTerminalMinimized)}
+                  className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                  title={isTerminalMinimized ? 'Restore Terminal' : 'Minimize Terminal'}
+                >
+                  <Minimize2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => {
+                    setIsTerminalMaximized(!isTerminalMaximized);
+                    setIsTerminalMinimized(false);
+                  }}
+                  className="p-1 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                  title={isTerminalMaximized ? 'Restore Normal Window' : 'Maximize Terminal'}
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setShowFloatingTerminal(false)}
+                  className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-700 rounded transition-colors"
+                  title="Close Floating Terminal"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Terminal Body Console Output */}
+            {!isTerminalMinimized && (
+              <div className="p-4 overflow-y-auto h-[calc(100%-40px)] text-xs space-y-1.5 leading-relaxed select-text font-mono">
+                {terminalLogs.length === 0 ? (
+                  <div className="text-slate-500 italic">No executions logged yet...</div>
+                ) : (
+                  terminalLogs.map((logStr, idx) => (
+                    <div 
+                      key={idx} 
+                      className={
+                        logStr.includes('✔ BENCHMARK COMPLETE') ? 'text-emerald-400 font-extrabold pt-2 border-t border-slate-800' :
+                        logStr.includes('❌ ERROR') ? 'text-rose-400 font-bold' :
+                        'text-slate-200'
+                      }
+                    >
+                      {logStr}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         )}
 
