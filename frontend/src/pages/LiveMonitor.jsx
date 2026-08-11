@@ -188,7 +188,7 @@ export default function LiveMonitor() {
       {/* Contrast Shading Overlay */}
       <div className="fixed inset-0 bg-gradient-to-t from-[#111111]/40 via-transparent to-[#111111]/30 pointer-events-none z-0" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12 mt-4 space-y-8 relative z-10">
         
         {/* Top Banner in Luminous Light Glass Card */}
         <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -286,21 +286,36 @@ export default function LiveMonitor() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {activeList.map((s) => (
-              <div key={s._id} className="relative rounded-xl p-5 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-[#111111] text-base">{s.name}</div>
-                    <div className="text-xs font-mono text-[#0E52FF] font-bold">{s.usn}</div>
+            {activeList.map((s) => {
+              const isKicked = s.status === 'kicked' || 
+                (roomData.warningLimit !== undefined && s.warningCount > roomData.warningLimit) || 
+                (roomData.tabSwitchLimit !== undefined && (s.tabSwitchCount || 0) > roomData.tabSwitchLimit);
+
+              return (
+                <div key={s._id} className={`relative rounded-xl p-5 backdrop-blur-xl border shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4 transition-all ${
+                  isKicked ? 'bg-rose-50/95 border-rose-300 ring-2 ring-rose-500/40' : 'bg-white/90 border-white/80'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-[#111111] text-base">{s.name}</div>
+                      <div className="text-xs font-mono text-[#0E52FF] font-bold">{s.usn}</div>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-mono font-extrabold uppercase tracking-wide ${
+                      isKicked ? 'bg-rose-600 text-white border border-rose-700 shadow-sm animate-pulse' :
+                      s.status === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
+                      s.status === 'auto-submitted' || s.status === 'submitted' ? 'bg-indigo-100 text-indigo-900 border border-indigo-300' :
+                      'bg-amber-100 text-amber-800 border border-amber-300'
+                    }`}>
+                      {isKicked ? 'SUSPENDED / AUTO-KICKED' : s.status}
+                    </span>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-extrabold uppercase ${
-                    s.status === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                    s.status === 'auto-submitted' || s.status === 'submitted' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
-                    s.status === 'kicked' ? 'bg-slate-200 text-slate-700 border border-slate-300' : 'bg-amber-100 text-amber-800 border border-amber-300'
-                  }`}>
-                    {s.status}
-                  </span>
-                </div>
+
+                  {isKicked && (
+                    <div className="p-2.5 rounded-lg bg-rose-600/10 border border-rose-500/30 text-rose-900 text-xs font-bold font-mono flex items-center space-x-1.5 shadow-xs">
+                      <ShieldAlert className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                      <span>Student Automatically Suspended (Limits Exceeded)</span>
+                    </div>
+                  )}
 
                 {/* Warning & Tab Switch Counters */}
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
@@ -357,7 +372,8 @@ export default function LiveMonitor() {
                   )}
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         </div>
 

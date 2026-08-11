@@ -602,6 +602,21 @@ export default function StudentExam() {
     sampleTestcases: [],
     boilerplate: {}
   };
+  const formatDescriptionHtml = (rawStr) => {
+    if (!rawStr) return '';
+    let clean = String(rawStr).replace(/\\n/g, '\n');
+    if (!/<[a-z][\s\S]*>/i.test(clean)) {
+      clean = clean.replace(/\n/g, '<br/>');
+    }
+    return clean;
+  };
+
+  const formatOutputStr = (str) => {
+    if (str === null || str === undefined) return '';
+    const s = typeof str === 'object' ? JSON.stringify(str, null, 2) : String(str);
+    return s.replace(/\\n/g, '\n');
+  };
+
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -768,8 +783,8 @@ export default function StudentExam() {
 
                   {/* Problem Description HTML */}
                   <div
-                    className="prose prose-invert max-w-none text-sm text-[#cccccc] leading-relaxed font-sans"
-                    dangerouslySetInnerHTML={{ __html: currentQuestion.descriptionHtml }}
+                    className="prose prose-invert max-w-none text-sm text-[#cccccc] leading-relaxed font-sans whitespace-pre-wrap select-text"
+                    dangerouslySetInnerHTML={{ __html: formatDescriptionHtml(currentQuestion.descriptionHtml) }}
                   />
                 </div>
 
@@ -780,10 +795,20 @@ export default function StudentExam() {
                       Examples
                     </h3>
                     {currentQuestion.sampleTestcases.map((tc, idx) => (
-                      <div key={idx} className="p-3.5 rounded-md bg-[#1e1e1e] border border-[#3e3e3e] font-mono text-xs space-y-1.5">
+                      <div key={idx} className="p-3.5 rounded-md bg-[#1e1e1e] border border-[#3e3e3e] font-mono text-xs space-y-2">
                         <div className="text-[#8a8a8a] font-sans text-[11px] font-bold">Example {idx + 1}:</div>
-                        <div><strong className="text-[#909090]">Input:</strong> <span className="text-white">{tc.input}</span></div>
-                        <div><strong className="text-[#909090]">Output:</strong> <span className="text-[#00b8a3] font-bold">{tc.expectedOutput}</span></div>
+                        <div>
+                          <span className="text-[#909090] font-bold">Input:</span>
+                          <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-white mt-1 select-text">
+                            {formatOutputStr(tc.input)}
+                          </pre>
+                        </div>
+                        <div>
+                          <span className="text-[#909090] font-bold">Output:</span>
+                          <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-[#00b8a3] font-bold mt-1 select-text">
+                            {formatOutputStr(tc.expectedOutput)}
+                          </pre>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1008,7 +1033,7 @@ export default function StudentExam() {
                               <span className="text-[#8a8a8a] text-xs font-mono">{runtimeVal}ms</span>
                             </div>
 
-                            <div className="pl-7 space-y-1 text-xs">
+                            <div className="pl-7 space-y-2 text-xs">
                               {tr.error && (
                                 <div className="text-[#FF375F] font-mono text-xs font-bold bg-[#FF375F]/10 p-2 rounded border border-[#FF375F]/20 whitespace-pre-wrap">
                                   Console / Runtime Error: '{tr.error}'
@@ -1016,20 +1041,29 @@ export default function StudentExam() {
                               )}
 
                               {inputVal && (
-                                <div className="text-slate-400">
-                                  Input: <span className="text-white font-bold">{inputVal}</span>
+                                <div>
+                                  <div className="text-[11px] font-bold text-slate-400">Input:</div>
+                                  <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-white mt-0.5 select-text">
+                                    {formatOutputStr(inputVal)}
+                                  </pre>
                                 </div>
                               )}
 
                               {expectedVal && (
-                                <div className="text-slate-400">
-                                  Expected: <span className="text-[#00b8a3] font-bold">{expectedVal}</span>
+                                <div>
+                                  <div className="text-[11px] font-bold text-slate-400">Expected:</div>
+                                  <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-[#00b8a3] font-bold mt-0.5 select-text">
+                                    {formatOutputStr(expectedVal)}
+                                  </pre>
                                 </div>
                               )}
 
                               {actualVal && (
-                                <div className="text-slate-400">
-                                  Actual: <span className={`font-bold ${passed ? 'text-[#00b8a3]' : 'text-[#FF375F]'}`}>{actualVal}</span>
+                                <div>
+                                  <div className="text-[11px] font-bold text-slate-400">Actual Output:</div>
+                                  <pre className={`font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] font-bold mt-0.5 select-text ${passed ? 'text-[#00b8a3]' : 'text-[#FF375F]'}`}>
+                                    {formatOutputStr(actualVal)}
+                                  </pre>
                                 </div>
                               )}
                             </div>

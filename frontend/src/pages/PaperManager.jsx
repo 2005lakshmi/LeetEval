@@ -176,14 +176,14 @@ export default function PaperManager() {
       {/* Contrast Shading Overlay */}
       <div className="fixed inset-0 bg-gradient-to-t from-[#111111]/40 via-transparent to-[#111111]/30 pointer-events-none z-0" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12 mt-4 space-y-6 relative z-10">
         
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl font-extrabold text-[#111111] tracking-tight drop-shadow-sm">
+            <h1 className="font-['Playfair_Display',serif] text-3xl sm:text-4xl font-extrabold text-[#FFFFFF] tracking-tight drop-shadow-sm">
               Exam Papers Management
             </h1>
-            <p className="text-sm text-[#111111] mt-1 font-semibold leading-relaxed">Assemble, edit, and configure exam papers, time limits, and allowed programming languages</p>
+            <p className="text-sm text-[#FFFFFF]/70 mt-1 font-semibold leading-relaxed">Assemble, edit, and configure exam papers, time limits, and allowed programming languages</p>
           </div>
           <button
             onClick={handleOpenCreateModal}
@@ -196,7 +196,7 @@ export default function PaperManager() {
 
       {/* Papers Grid */}
       {loading ? (
-        <div className="text-[#111111] text-sm font-semibold">Loading exam papers...</div>
+        <div className="text-[#FFFFFF] text-sm font-semibold">Loading exam papers...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {papers.map((p) => {
@@ -218,7 +218,6 @@ export default function PaperManager() {
                       <button
                         onClick={() => handleDeletePaper(p._id)}
                         className="p-1.5 text-rose-600 hover:text-rose-800 rounded-lg hover:bg-rose-100 transition-all"
-                        title="Delete Paper"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -436,9 +435,19 @@ export default function PaperManager() {
 
       {/* Edit Paper Modal */}
       {editingPaper && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-white shadow-2xl text-[#111111] space-y-4">
-            <h2 className="font-['Playfair_Display',serif] text-2xl font-extrabold text-[#111111]">Edit Exam Paper Settings</h2>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-4 sm:p-6 pt-16 sm:pt-6 overflow-y-auto">
+          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-xl w-full max-h-[88vh] overflow-y-auto border border-white shadow-2xl text-[#111111] space-y-4 my-auto relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h2 className="font-['Playfair_Display',serif] text-2xl font-extrabold text-[#111111]">Edit Exam Paper Settings</h2>
+              <button
+                type="button"
+                onClick={() => setEditingPaper(null)}
+                className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
+                title="Close Modal"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
             
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono font-bold">

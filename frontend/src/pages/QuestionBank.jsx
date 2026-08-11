@@ -360,7 +360,7 @@ export default function QuestionBank() {
       {/* Contrast Shading Overlay */}
       <div className="fixed inset-0 bg-gradient-to-t from-[#111111]/40 via-transparent to-[#111111]/30 pointer-events-none z-0" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12 mt-4 space-y-6 relative z-10">
         
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -529,8 +529,8 @@ export default function QuestionBank() {
 
       {/* Create / Edit Question Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-800 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-4 sm:p-6 pt-16 sm:pt-6 overflow-y-auto">
+          <div className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[88vh] overflow-y-auto border border-slate-800 shadow-2xl my-auto">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
               <div className="flex items-center space-x-3">
                 <h2 className="text-xl font-bold text-white">
@@ -547,10 +547,12 @@ export default function QuestionBank() {
                 </button>
               </div>
               <button
+                type="button"
                 onClick={() => setShowCreateModal(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                title="Close Modal"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
@@ -568,14 +570,17 @@ export default function QuestionBank() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Description (HTML / Text)</label>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-1 gap-1">
+                  <label className="block text-xs font-semibold text-slate-300 uppercase">Description (HTML / Text)</label>
+                  <span className="text-[11px] text-amber-400 font-mono font-semibold">HTML tags & line breaks supported (e.g. &lt;pre&gt;***&#10;***&#10;***&lt;/pre&gt;)</span>
+                </div>
                 <textarea
-                  rows="4"
+                  rows="5"
                   required
                   value={formData.descriptionHtml}
                   onChange={(e) => setFormData({ ...formData, descriptionHtml: e.target.value })}
-                  placeholder="<p>Given the head of a singly linked list...</p>"
-                  className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm font-mono"
+                  placeholder="<p>Given an integer n, print a square pattern...</p> or plain text with line breaks (\n)"
+                  className="w-full p-3 bg-slate-900 border border-slate-800 rounded-xl text-white text-sm font-mono whitespace-pre-wrap focus:border-indigo-500 focus:outline-none"
                 />
               </div>
 
