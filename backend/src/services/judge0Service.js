@@ -141,8 +141,8 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       const mainPath = path.join(tmpDir, 'Main.java');
       fs.writeFileSync(mainPath, wrappedScript, 'utf8');
 
-      // Compile Main.java
-      const compileRes = spawnSync('javac', ['Main.java'], { cwd: tmpDir, timeout: 15000, encoding: 'utf8' });
+      // Compile Main.java with UTF-8 encoding support
+      const compileRes = spawnSync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 20000, encoding: 'utf8' });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
