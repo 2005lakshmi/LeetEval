@@ -132,7 +132,7 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
     return parseResultsOutput(res.stdout || '', res.stderr || '');
   }
 
-  // 3. Java Native Compilation & Execution (javac & java)
+  // 3. Java Native Execution (java -encoding UTF-8 Main.java)
   if (lang === 'java') {
     const tmpDir = path.join(os.tmpdir(), `java_run_${runId}`);
     try {
@@ -141,21 +141,26 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       const mainPath = path.join(tmpDir, 'Main.java');
       fs.writeFileSync(mainPath, wrappedScript, 'utf8');
 
-      // Compile Main.java
-      const compileRes = spawnSync('javac', ['Main.java'], { cwd: tmpDir, timeout: 10000, encoding: 'utf8' });
-      if (compileRes.error || compileRes.status !== 0) {
-        const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
-        return {
-          verdict: 'Compilation Error',
-          testResults: [{ testIndex: 0, passed: false, error: compileErr.trim(), runtimeMs: 0 }],
-          rawOutput: compileErr.trim(),
-          totalRuntimeMs: Date.now() - startTimeTotal
-        };
+      // Execute via java -encoding UTF-8 Main.java (single step in-memory execution with UTF-8 encoding support)
+      let runRes = spawnSync('java', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 10000, encoding: 'utf8' });
+      
+      // Fallback for older JDK versions (javac -encoding UTF-8 Main.java && java -Dfile.encoding=UTF-8 Main)
+      if (runRes.error || runRes.status !== 0) {
+        const compileRes = spawnSync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 10000, encoding: 'utf8' });
+        if (compileRes.error || compileRes.status !== 0) {
+          const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
+          return {
+            verdict: 'Compilation Error',
+            testResults: [{ testIndex: 0, passed: false, error: compileErr.trim(), runtimeMs: 0 }],
+            rawOutput: compileErr.trim(),
+            totalRuntimeMs: Date.now() - startTimeTotal
+          };
+        }
+
+        runRes = spawnSync('java', ['-Dfile.encoding=UTF-8', 'Main'], { cwd: tmpDir, timeout: 8000, encoding: 'utf8' });
       }
 
-      // Execute Main class
-      const runRes = spawnSync('java', ['Main'], { cwd: tmpDir, timeout: 8000, encoding: 'utf8' });
       try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
 
       if (runRes.error || runRes.status !== 0) {
