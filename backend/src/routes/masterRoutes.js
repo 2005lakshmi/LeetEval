@@ -173,8 +173,8 @@ router.post('/benchmark-simulate', async (req, res) => {
     for (let i = 0; i < requestList.length; i += batchSize) {
       const batch = requestList.slice(i, i + batchSize);
       const batchPromises = batch.map(async (job, bIdx) => {
-        const jobStart = process.hrtime.bigint();
         try {
+          const jobStart = process.hrtime.bigint();
           const res = await judge0ExecuteCode({
             language: job.language,
             code: job.code,
