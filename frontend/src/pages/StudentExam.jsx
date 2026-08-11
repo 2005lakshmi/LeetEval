@@ -617,6 +617,27 @@ export default function StudentExam() {
     return s.replace(/\\n/g, '\n');
   };
 
+  const extractHarnessTestcases = (question, lang) => {
+    if (!question) return [];
+    const harness = question.harnessCode?.[lang] || question.harnessCode?.python || '';
+    if (harness) {
+      const match = harness.match(/(?:test_cases|testcases|sampleTestcases)\s*=\s*(\[[\s\S]*?\])\s*(?:;|\n|$)/i);
+      if (match && match[1]) {
+        try {
+          let jsonStr = match[1].replace(/'/g, '"');
+          const parsed = JSON.parse(jsonStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        } catch (e) {}
+      }
+    }
+    if (question.sampleTestcases && question.sampleTestcases.length > 0) {
+      return question.sampleTestcases;
+    }
+    return [];
+  };
+
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -964,11 +985,33 @@ export default function StudentExam() {
             <div className="flex-1 p-3 overflow-y-auto bg-[#1e1e1e] font-mono text-xs">
               {activeBottomConsole === 'testcase' && (
                 <div className="space-y-3">
-                  <div className="text-slate-400 text-[11px]">Sample Test Input Parameters:</div>
-                  {currentQuestion.sampleTestcases?.map((tc, idx) => (
-                    <div key={idx} className="p-2 rounded bg-[#282828] border border-[#3e3e3e]">
-                      <span className="text-[#8a8a8a] text-[10px] block">Case {idx + 1} Input:</span>
-                      <span className="text-[#00b8a3]">{tc.input}</span>
+                  <div className="flex items-center justify-between text-slate-400 text-[11px] border-b border-[#282828] pb-1">
+                    <span>Harness Testcase Suite ({extractHarnessTestcases(currentQuestion, selectedLanguage).length || currentQuestion.sampleTestcases?.length || 0}):</span>
+                    <span className="text-[10px] text-[#00b8a3] font-mono font-bold">Executable Testcases</span>
+                  </div>
+
+                  {(extractHarnessTestcases(currentQuestion, selectedLanguage).length > 0
+                    ? extractHarnessTestcases(currentQuestion, selectedLanguage)
+                    : currentQuestion.sampleTestcases
+                  )?.map((tc, idx) => (
+                    <div key={idx} className="p-3 rounded-lg bg-[#282828] border border-[#3e3e3e] space-y-2">
+                      <div className="text-[#00b8a3] text-[11px] font-bold">Testcase {idx + 1}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                        <div>
+                          <div className="text-[#8a8a8a] text-[10px] font-bold">Input:</div>
+                          <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-white mt-1 select-text">
+                            {formatOutputStr(tc.input)}
+                          </pre>
+                        </div>
+                        {tc.expectedOutput && (
+                          <div>
+                            <div className="text-[#8a8a8a] text-[10px] font-bold">Expected Output:</div>
+                            <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-[#00b8a3] font-bold mt-1 select-text">
+                              {formatOutputStr(tc.expectedOutput)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
