@@ -949,20 +949,60 @@ int main() {
 
                 {/* Parsed Testcases Summary (if available) */}
                 {verifyResults.testResults?.length > 0 && (
-                  <div className="space-y-1.5 pt-2 border-t border-slate-800/80">
+                  <div className="space-y-2.5 pt-3 border-t border-slate-800 font-mono">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Parsed Testcases Summary:</span>
-                    {verifyResults.testResults.map((r, i) => (
-                      <div key={i} className="text-xs font-mono py-1.5 px-2 bg-slate-900/60 rounded border border-slate-800 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          {r.passed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-rose-400" />}
-                          <span>Testcase {r.testIndex || i + 1}: <strong className={r.passed ? "text-emerald-400" : "text-rose-400"}>{r.passed ? 'PASSED' : 'FAILED'}</strong></span>
+                    {verifyResults.testResults.map((r, i) => {
+                      const outVal = r.output !== undefined ? String(r.output).replace(/\\n/g, '\n') : (r.actualOutput !== undefined ? String(r.actualOutput).replace(/\\n/g, '\n') : '');
+                      const expVal = r.expected !== undefined ? String(r.expected).replace(/\\n/g, '\n') : (r.expectedOutput !== undefined ? String(r.expectedOutput).replace(/\\n/g, '\n') : '');
+                      const inpVal = r.input !== undefined ? (typeof r.input === 'object' ? JSON.stringify(r.input) : String(r.input)).replace(/\\n/g, '\n') : '';
+
+                      return (
+                        <div key={i} className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 space-y-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              {r.passed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-rose-400" />}
+                              <span className="font-bold text-slate-200">Testcase {r.testIndex || i + 1}: <strong className={r.passed ? "text-emerald-400" : "text-rose-400"}>{r.passed ? 'PASSED' : 'FAILED'}</strong></span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 font-bold">Runtime: {r.runtimeMs}ms</span>
+                          </div>
+
+                          {(inpVal || expVal || outVal) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t border-slate-800/60">
+                              {inpVal && (
+                                <div>
+                                  <div className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Input:</div>
+                                  <pre className="font-mono text-xs whitespace-pre-wrap bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-slate-200 leading-relaxed select-text">
+                                    {inpVal}
+                                  </pre>
+                                </div>
+                              )}
+                              {expVal && (
+                                <div>
+                                  <div className="text-[10px] font-bold text-emerald-400 uppercase mb-0.5">Expected Output:</div>
+                                  <pre className="font-mono text-xs whitespace-pre-wrap bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-emerald-400 leading-relaxed select-text">
+                                    {expVal}
+                                  </pre>
+                                </div>
+                              )}
+                              {outVal && (
+                                <div>
+                                  <div className="text-[10px] font-bold text-indigo-400 uppercase mb-0.5">Actual Output:</div>
+                                  <pre className="font-mono text-xs whitespace-pre-wrap bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-white leading-relaxed select-text">
+                                    {outVal}
+                                  </pre>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {r.error && (
+                            <div className="text-[11px] text-rose-400 bg-rose-950/40 p-2 rounded-lg border border-rose-900/50 whitespace-pre-wrap">
+                              {r.error}
+                            </div>
+                          )}
                         </div>
-                        <div className="flex items-center space-x-3 text-[11px] text-slate-400">
-                          {r.output !== undefined && <span>Output: <strong className="text-slate-200">{r.output || 'None'}</strong></span>}
-                          <span>Runtime: {r.runtimeMs}ms</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
