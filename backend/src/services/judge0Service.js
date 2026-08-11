@@ -132,7 +132,7 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
     return parseResultsOutput(res.stdout || '', res.stderr || '');
   }
 
-  // 3. Java Native Compilation & Execution (javac -encoding UTF-8 Main.java && java -Dfile.encoding=UTF-8 Main)
+  // 3. Java Native Compilation & Execution (javac & java with Cloud Engine Fallback)
   if (lang === 'java') {
     const tmpDir = path.join(os.tmpdir(), `java_run_${runId}`);
     try {
@@ -141,36 +141,40 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       const mainPath = path.join(tmpDir, 'Main.java');
       fs.writeFileSync(mainPath, wrappedScript, 'utf8');
 
-      // 1. Compile Main.java with UTF-8 encoding support
-      const compileRes = spawnSync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 10000, encoding: 'utf8' });
-      if (compileRes.error || compileRes.status !== 0) {
-        const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
+      // 1. Try local javac compilation with 30s timeout & UTF-8 encoding
+      const compileRes = spawnSync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 30000, encoding: 'utf8' });
+      
+      if (!compileRes.error && compileRes.status === 0) {
+        // 2. Execute Main class with UTF-8 system encoding
+        const runRes = spawnSync('java', ['-Dfile.encoding=UTF-8', 'Main'], { cwd: tmpDir, timeout: 15000, encoding: 'utf8' });
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
+
+        if (!runRes.error && runRes.status === 0) {
+          return parseResultsOutput(runRes.stdout || '', runRes.stderr || '');
+        }
+
+        if (runRes.error?.code === 'ETIMEDOUT') {
+          return {
+            verdict: 'Time Limit Exceeded',
+            testResults: [{ testIndex: 0, passed: false, error: 'Java Execution Timed Out (Time Limit Exceeded)', runtimeMs: 15000 }],
+            rawOutput: 'Java Execution Timed Out (Time Limit Exceeded)',
+            totalRuntimeMs: Date.now() - startTimeTotal
+          };
+        }
+      } else if (compileRes.error && compileRes.error.code !== 'ETIMEDOUT' && compileRes.stderr && compileRes.stderr.trim()) {
+        // Real Java Compilation Syntax Error from javac
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
         return {
           verdict: 'Compilation Error',
-          testResults: [{ testIndex: 0, passed: false, error: compileErr.trim(), runtimeMs: 0 }],
-          rawOutput: compileErr.trim(),
+          testResults: [{ testIndex: 0, passed: false, error: compileRes.stderr.trim(), runtimeMs: 0 }],
+          rawOutput: compileRes.stderr.trim(),
           totalRuntimeMs: Date.now() - startTimeTotal
         };
       }
 
-      // 2. Execute Main class with UTF-8 system encoding property
-      const runRes = spawnSync('java', ['-Dfile.encoding=UTF-8', 'Main'], { cwd: tmpDir, timeout: 8000, encoding: 'utf8' });
       try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
-
-      if (runRes.error || runRes.status !== 0) {
-        const errStr = runRes.stderr || 'Java Execution Error';
-        return {
-          verdict: 'Runtime Error',
-          testResults: [{ testIndex: 0, passed: false, error: errStr, runtimeMs: 0 }],
-          rawOutput: errStr,
-          totalRuntimeMs: Date.now() - startTimeTotal
-        };
-      }
-
-      return parseResultsOutput(runRes.stdout || '', runRes.stderr || '');
     } catch (e) {
-      console.log(`[Java Local Runner Error]: ${e.message}`);
+      console.log(`[Java Local Runner Warning]: ${e.message}. Fallback to Cloud Engine.`);
     }
   }
 
