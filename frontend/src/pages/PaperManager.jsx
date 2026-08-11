@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
-import { Plus, FileText, CheckCircle2, ShieldAlert, Trash2, Clock, Shuffle, Code2, CheckSquare, Edit, Edit3 } from 'lucide-react';
+import { Plus, FileText, CheckCircle2, ShieldAlert, Trash2, Clock, Shuffle, Code2, CheckSquare, Edit, Edit3, X } from 'lucide-react';
 
 export default function PaperManager() {
   const [papers, setPapers] = useState([]);
@@ -295,9 +295,19 @@ export default function PaperManager() {
 
       {/* Create Paper Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto border border-white shadow-2xl text-[#111111] space-y-4">
-            <h2 className="font-['Playfair_Display',serif] text-2xl font-extrabold text-[#111111]">Assemble Exam Paper</h2>
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-4 sm:p-6 pt-20 sm:pt-24 overflow-y-auto">
+          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-xl w-full max-h-[85vh] overflow-y-auto border border-white shadow-2xl text-[#111111] space-y-4 my-auto relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h2 className="font-['Playfair_Display',serif] text-2xl font-extrabold text-[#111111]">Assemble Exam Paper</h2>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 transition-colors"
+                title="Close Modal"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
             
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono font-bold">
@@ -435,8 +445,8 @@ export default function PaperManager() {
 
       {/* Edit Paper Modal */}
       {editingPaper && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-4 sm:p-6 pt-16 sm:pt-6 overflow-y-auto">
-          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-xl w-full max-h-[88vh] overflow-y-auto border border-white shadow-2xl text-[#111111] space-y-4 my-auto relative">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-4 sm:p-6 pt-20 sm:pt-24 overflow-y-auto">
+          <div className="bg-[#FFFFFF]/95 backdrop-blur-xl p-6 rounded-2xl max-w-xl w-full max-h-[85vh] overflow-y-auto border border-white shadow-2xl text-[#111111] space-y-4 my-auto relative">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <h2 className="font-['Playfair_Display',serif] text-2xl font-extrabold text-[#111111]">Edit Exam Paper Settings</h2>
               <button

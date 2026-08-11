@@ -529,8 +529,8 @@ export default function QuestionBank() {
 
       {/* Create / Edit Question Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-4 sm:p-6 pt-16 sm:pt-6 overflow-y-auto">
-          <div className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[88vh] overflow-y-auto border border-slate-800 shadow-2xl my-auto">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-4 sm:p-6 pt-20 sm:pt-24 overflow-y-auto">
+          <div className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-slate-800 shadow-2xl my-auto relative">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
               <div className="flex items-center space-x-3">
                 <h2 className="text-xl font-bold text-white">
@@ -669,43 +669,60 @@ export default function QuestionBank() {
                 </div>
 
                 {formData.sampleTestcases.map((tc, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-slate-500 w-6">#{idx + 1}</span>
-                    <input
-                      type="text"
-                      placeholder="Input e.g. [2,7,11,15], 9"
-                      value={tc.input}
-                      onChange={(e) => {
-                        const updated = [...formData.sampleTestcases];
-                        updated[idx].input = e.target.value;
-                        setFormData({ ...formData, sampleTestcases: updated });
-                      }}
-                      className="flex-1 p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Expected Output e.g. [0,1]"
-                      value={tc.expectedOutput}
-                      onChange={(e) => {
-                        const updated = [...formData.sampleTestcases];
-                        updated[idx].expectedOutput = e.target.value;
-                        setFormData({ ...formData, sampleTestcases: updated });
-                      }}
-                      className="flex-1 p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs font-mono text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none"
-                    />
-                    {formData.sampleTestcases.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = formData.sampleTestcases.filter((_, i) => i !== idx);
-                          setFormData({ ...formData, sampleTestcases: updated });
-                        }}
-                        className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
-                        title="Remove Testcase"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                  <div key={idx} className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2 font-mono text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-indigo-400">Sample Testcase #{idx + 1}</span>
+                      {formData.sampleTestcases.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = formData.sampleTestcases.filter((_, i) => i !== idx);
+                            setFormData({ ...formData, sampleTestcases: updated });
+                          }}
+                          className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors flex items-center space-x-1"
+                          title="Remove Testcase"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="text-[10px]">Remove</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-slate-400 font-bold uppercase mb-1">
+                          Input (Supports Multi-line / Enter key)
+                        </label>
+                        <textarea
+                          rows="3"
+                          placeholder="e.g. 3 or [2,7,11,15]"
+                          value={tc.input}
+                          onChange={(e) => {
+                            const updated = [...formData.sampleTestcases];
+                            updated[idx].input = e.target.value;
+                            setFormData({ ...formData, sampleTestcases: updated });
+                          }}
+                          className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-white placeholder-slate-600 focus:border-indigo-500 focus:outline-none whitespace-pre-wrap leading-relaxed"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] text-emerald-400 font-bold uppercase mb-1">
+                          Expected Output (Supports Multi-line / Enter key)
+                        </label>
+                        <textarea
+                          rows="3"
+                          placeholder={'e.g. ***\n***\n***'}
+                          value={tc.expectedOutput}
+                          onChange={(e) => {
+                            const updated = [...formData.sampleTestcases];
+                            updated[idx].expectedOutput = e.target.value;
+                            setFormData({ ...formData, sampleTestcases: updated });
+                          }}
+                          className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-lg text-xs font-mono text-emerald-400 placeholder-slate-600 focus:border-indigo-500 focus:outline-none whitespace-pre-wrap leading-relaxed"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
