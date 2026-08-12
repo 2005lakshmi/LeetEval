@@ -210,14 +210,12 @@ export default function ResultsAnalytics() {
                       </div>
                     )}
 
-                    {actualVal && (
-                      <div>
-                        <div className="text-[10px] font-bold text-slate-600 uppercase">Actual Output:</div>
-                        <pre className={`font-mono text-xs whitespace-pre-wrap bg-slate-900 p-2.5 rounded-lg border border-slate-800 font-bold mt-0.5 select-text ${passed ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {actualVal.replace(/\\n/g, '\n')}
-                        </pre>
-                      </div>
-                    )}
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Student's Output:</div>
+                      <pre className={`font-mono text-xs whitespace-pre-wrap bg-slate-900 p-2.5 rounded-lg border border-slate-800 font-bold mt-0.5 select-text ${passed ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {actualVal !== undefined && actualVal !== '' ? actualVal.replace(/\\n/g, '\n') : '(No output returned or printed)'}
+                      </pre>
+                    </div>
                   </div>
                 </div>
               );

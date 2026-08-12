@@ -1122,14 +1122,12 @@ export default function StudentExam() {
                                 </div>
                               )}
 
-                              {actualVal && (
-                                <div>
-                                  <div className="text-[11px] font-bold text-slate-400">Actual Output:</div>
-                                  <pre className={`font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] font-bold mt-0.5 select-text ${passed ? 'text-[#00b8a3]' : 'text-[#FF375F]'}`}>
-                                    {formatOutputStr(actualVal)}
-                                  </pre>
-                                </div>
-                              )}
+                              <div>
+                                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Your Code's Output:</div>
+                                <pre className={`font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2.5 rounded border border-[#333333] font-bold mt-0.5 select-text ${passed ? 'text-[#00b8a3]' : 'text-[#FF375F]'}`}>
+                                  {actualVal !== undefined && actualVal !== '' ? formatOutputStr(actualVal) : '(No output returned or printed)'}
+                                </pre>
+                              </div>
                             </div>
                           </div>
                         );
