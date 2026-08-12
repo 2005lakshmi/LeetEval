@@ -326,6 +326,14 @@ async function executeViaPiston(language, wrappedCode) {
     return parseResultsOutput(stdout, stderr);
   } catch (err) {
     console.error(`[Piston Cloud Engine Notice]: ${err.message}`);
+    if (err.response?.status === 429) {
+      return {
+        verdict: 'Execution Alert',
+        testResults: [{ testIndex: 1, passed: false, error: 'Public cloud compiler rate limit reached (HTTP 429). Please wait 2 seconds and click Run Code / Submit again.', runtimeMs: 0 }],
+        rawOutput: 'Public cloud compiler rate limit reached (HTTP 429). Please wait 2 seconds and try again.',
+        totalRuntimeMs: 0
+      };
+    }
     return null;
   }
 }
