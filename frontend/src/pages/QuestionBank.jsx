@@ -3,7 +3,8 @@ import axios from 'axios';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
 import { generateHarnessAiPrompt } from '../utils/harnessPromptGenerator';
-import { Plus, CheckCircle2, XCircle, Play, ShieldAlert, Code2, Trash2, Eye, DownloadCloud, Sparkles, Pencil, X, Scissors, Check, Terminal, Maximize2, Minimize2, Save, Copy, FileText } from 'lucide-react';
+import { COMBINED_PROMPT_TEXT, downloadPromptTxt, copyLeetCodePromptToClipboard } from '../utils/promptTemplate';
+import { Plus, CheckCircle2, XCircle, Play, ShieldAlert, Code2, Trash2, Eye, DownloadCloud, Sparkles, Pencil, X, Scissors, Check, Terminal, Maximize2, Minimize2, Save, Copy, FileText, Download } from 'lucide-react';
 
 export default function QuestionBank() {
   const [questions, setQuestions] = useState([]);
@@ -133,6 +134,7 @@ export default function QuestionBank() {
 
       setShowImportModal(false);
       setShowCreateModal(true);
+      copyLeetCodePromptToClipboard(importedQ);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to import from LeetCode');
     } finally {
@@ -141,6 +143,7 @@ export default function QuestionBank() {
   };
 
   const handleOpenCreateNew = () => {
+    downloadPromptTxt();
     setEditingQuestionId(null);
     setFormData({
       title: '',
@@ -422,22 +425,34 @@ export default function QuestionBank() {
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-2">
+              <div className="flex items-center justify-between pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl"
+                  onClick={() => copyLeetCodePromptToClipboard()}
+                  className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-mono font-bold rounded-lg flex items-center space-x-1.5 transition-all"
+                  title="Copy AI Harness Prompt to Clipboard"
                 >
-                  Cancel
+                  <Copy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Copy Prompt for LeetCode</span>
                 </button>
-                <button
-                  type="submit"
-                  disabled={importing}
-                  className="px-5 py-2 bg-[#FFA116] hover:bg-[#e59010] text-black font-mono font-bold text-xs uppercase tracking-wider rounded-lg flex items-center space-x-2 transition-all shadow-md disabled:opacity-50"
-                >
-                  <DownloadCloud className="w-4 h-4 text-black" />
-                  <span>{importing ? 'Fetching LeetCode...' : 'Fetch & Load'}</span>
-                </button>
+
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowImportModal(false)}
+                    className="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={importing}
+                    className="px-5 py-2 bg-[#FFA116] hover:bg-[#e59010] text-black font-mono font-bold text-xs uppercase tracking-wider rounded-lg flex items-center space-x-2 transition-all shadow-md disabled:opacity-50"
+                  >
+                    <DownloadCloud className="w-4 h-4 text-black" />
+                    <span>{importing ? 'Fetching LeetCode...' : 'Fetch & Load'}</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -448,9 +463,9 @@ export default function QuestionBank() {
       {loading ? (
         <div className="text-[#111111] text-sm font-semibold">Loading questions...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {(questions || []).filter(q => q && q._id).map((q) => (
-            <div key={q._id} className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] flex flex-col justify-between space-y-4">
+            <div key={q._id} className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold font-mono uppercase ${
@@ -532,10 +547,19 @@ export default function QuestionBank() {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-4 sm:p-6 pt-20 sm:pt-24 overflow-y-auto">
           <div className="glass-panel p-6 rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto border border-slate-800 shadow-2xl my-auto relative">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <h2 className="text-xl font-bold text-white">
                   {editingQuestionId ? 'Edit Question' : 'Create Question'}
                 </h2>
+                <button
+                  type="button"
+                  onClick={downloadPromptTxt}
+                  className="px-3 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono font-bold rounded-lg flex items-center space-x-1.5 transition-all shadow-sm"
+                  title="Download prompt.txt Template File"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Download prompt.txt</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleOpenAiPrompt(formData)}
