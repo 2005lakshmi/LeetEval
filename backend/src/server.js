@@ -40,10 +40,15 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
-// Rate Limiting for Run/Submit endpoints
+// Enable trust proxy for Render / Cloudflare / Vercel reverse proxies
+app.set('trust proxy', 1);
+
+// High-Capacity Rate Limiter tailored for Concurrent Student Computer Labs (up to 500+ students on 1 Lab IP)
 const apiLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 120, // 120 requests per minute
+  windowMs: 1 * 60 * 1000, // 1 minute window
+  max: 3000, // Increased capacity: 3000 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { message: 'Too many requests, please try again shortly.' }
 });
 app.use('/api/', apiLimiter);
