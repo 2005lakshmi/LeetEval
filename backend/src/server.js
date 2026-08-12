@@ -6,6 +6,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
+const compression = require('compression');
+
 const { connectDB, checkDBConnected } = require('./config/db');
 const { setupSocketHandlers } = require('./socket/socketHandler');
 const { initQueue } = require('./services/queueService');
@@ -34,7 +36,8 @@ const io = new Server(server, {
 // Attach io to app for access in route handlers
 app.set('io', io);
 
-// Security Middlewares
+// High-Performance Compression & Security Middlewares
+app.use(compression());
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '5mb' }));
@@ -43,12 +46,29 @@ app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 // Enable trust proxy for Render / Cloudflare / Vercel reverse proxies
 app.set('trust proxy', 1);
 
-// High-Capacity Rate Limiter tailored for Concurrent Student Computer Labs (up to 500+ students on 1 Lab IP)
+// High-Capacity Rate Limiter for Student Labs (Admins/Faculty 100% Exempt)
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute window
-  max: 3000, // Increased capacity: 3000 requests per minute per IP
+  max: 3000, // 3000 requests per minute per IP for students
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // 1. Admin, Master & Faculty management routes are 100% EXEMPT from rate limits
+    if (
+      req.path.startsWith('/auth') ||
+      req.path.startsWith('/master') ||
+      req.path.startsWith('/questions') ||
+      req.path.startsWith('/papers') ||
+      req.path.startsWith('/rooms')
+    ) {
+      return true;
+    }
+    // 2. Any request with an Admin JWT Authorization Header is 100% EXEMPT
+    if (req.headers.authorization) {
+      return true;
+    }
+    return false;
+  },
   message: { message: 'Too many requests, please try again shortly.' }
 });
 app.use('/api/', apiLimiter);
