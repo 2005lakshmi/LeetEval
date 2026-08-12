@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
 import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X, Copy, GripHorizontal } from 'lucide-react';
@@ -58,7 +59,52 @@ export default function MasterDashboard() {
   useEffect(() => {
     fetchMasterData();
     const interval = setInterval(fetchMasterData, 3000);
-    return () => clearInterval(interval);
+
+    const socket = io(window.location.origin);
+    
+    socket.on('benchmark_telemetry_tick', (data) => {
+      // Live RAM & Process Memory updates
+      if (data.ramUsedMb || data.ramPercentage) {
+        setHealth((prev) => ({
+          ...prev,
+          processMemory: {
+            ...prev?.processMemory,
+            heapUsedMb: data.v8HeapUsedMb || data.ramUsedMb,
+            heapTotalMb: data.v8HeapTotalMb,
+            rssMb: data.ramUsedMb
+          },
+          ramPercentage: data.ramPercentage || prev?.ramPercentage
+        }));
+      }
+
+      // Live append to floating console log
+      if (Array.isArray(data.recentLogs)) {
+        const newLogs = data.recentLogs.map(
+          (l) => `[${new Date().toLocaleTimeString()}] ▶ RUN #${l.index} [${l.language.toUpperCase()}] -> Verdict: ${l.verdict} | Latency: ${l.latencyMs}ms | Output: "${(l.rawOutput || '').trim().replace(/\n/g, ' ')}"`
+        );
+        setTerminalLogs((prev) => [...prev, ...newLogs]);
+
+        // Live append to benchmark results table
+        setBenchResult((prev) => {
+          const currentLogs = prev?.executionLogs || [];
+          return {
+            ...prev,
+            totalExecutions: data.completedCount,
+            executionLogs: [...currentLogs, ...data.recentLogs]
+          };
+        });
+      }
+    });
+
+    socket.on('queue_cleared', (data) => {
+      const msg = `[${new Date().toLocaleTimeString()}] ⚠️ ${data.message || 'All execution processes were terminated. Run again.'}`;
+      setTerminalLogs((prev) => [...prev, msg]);
+    });
+
+    return () => {
+      clearInterval(interval);
+      socket.disconnect();
+    };
   }, []);
 
   // Draggable Terminal Global Event Listeners

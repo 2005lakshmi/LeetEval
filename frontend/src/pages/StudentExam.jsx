@@ -157,6 +157,17 @@ export default function StudentExam() {
       }
     });
 
+    socket.on('queue_position_update', (data) => {
+      setRawOutput(`[QUEUE NOTICE]: ${data.message || 'Please wait, you are in queue to be executed...'}`);
+    });
+
+    socket.on('queue_cleared', (data) => {
+      setRunning(false);
+      setSubmitting(false);
+      setVerdict('Execution Flushed');
+      setRawOutput(data.message || 'All execution processes were terminated. Run again.');
+    });
+
     socket.on('session_ended_all', ({ message }) => {
       alert(message || 'Faculty has ended the exam session for all students.');
       setAutoSubmitted(true);

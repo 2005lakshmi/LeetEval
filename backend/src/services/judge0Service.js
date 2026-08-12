@@ -1,10 +1,44 @@
-const axios = require('axios');
-const vm = require('vm');
-const { execSync, spawnSync } = require('child_process');
+const { execSync, spawnSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { generateHarness } = require('./harnessGenerator');
+
+/**
+ * Non-blocking Async Process Executor wrapper
+ * Prevents Node.js single-thread event loop freezing during compilation & execution.
+ */
+function execAsync(cmd, args, opts = {}) {
+  return new Promise((resolve) => {
+    const proc = spawn(cmd, args, opts);
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      try { proc.kill('SIGKILL'); } catch(e){}
+    }, opts.timeout || 15000);
+
+    if (proc.stdout) proc.stdout.on('data', (d) => { stdout += d.toString('utf8'); });
+    if (proc.stderr) proc.stderr.on('data', (d) => { stderr += d.toString('utf8'); });
+
+    proc.on('close', (status) => {
+      clearTimeout(timer);
+      resolve({
+        status,
+        stdout,
+        stderr,
+        error: timedOut ? { code: 'ETIMEDOUT', message: 'Execution timed out' } : null
+      });
+    });
+
+    proc.on('error', (err) => {
+      clearTimeout(timer);
+      resolve({ status: 1, stdout, stderr, error: err });
+    });
+  });
+}
 
 const JUDGE0_LANG_IDS = {
   python: 71,
@@ -94,13 +128,13 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       pythonCmd = 'python3';
     }
 
-    const res = spawnSync(pythonCmd, [tmpPath], { timeout: 8000, encoding: 'utf8' });
+    const res = await execAsync(pythonCmd, [tmpPath], { timeout: 12000 });
     try { fs.unlinkSync(tmpPath); } catch(e){}
 
     if (res.error || res.status !== 0) {
       const errOutput = res.stderr || res.error?.message || 'Python Runtime Error';
       return {
-        verdict: 'Runtime Error',
+        verdict: res.error?.code === 'ETIMEDOUT' ? 'Time Limit Exceeded' : 'Runtime Error',
         testResults: [{ testIndex: 0, passed: false, error: errOutput.trim(), runtimeMs: 0 }],
         rawOutput: errOutput.trim(),
         totalRuntimeMs: Date.now() - startTimeTotal
@@ -116,13 +150,13 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
     const tmpPath = path.join(os.tmpdir(), `test_runner_${runId}.js`);
     fs.writeFileSync(tmpPath, wrappedScript, 'utf8');
 
-    const res = spawnSync('node', [tmpPath], { timeout: 8000, encoding: 'utf8' });
+    const res = await execAsync('node', [tmpPath], { timeout: 12000 });
     try { fs.unlinkSync(tmpPath); } catch(e){}
 
     if (res.error || res.status !== 0) {
       const errOutput = res.stderr || res.error?.message || 'JavaScript Runtime Error';
       return {
-        verdict: 'Runtime Error',
+        verdict: res.error?.code === 'ETIMEDOUT' ? 'Time Limit Exceeded' : 'Runtime Error',
         testResults: [{ testIndex: 0, passed: false, error: errOutput.trim(), runtimeMs: 0 }],
         rawOutput: errOutput.trim(),
         totalRuntimeMs: Date.now() - startTimeTotal
@@ -142,7 +176,7 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       fs.writeFileSync(mainPath, wrappedScript, 'utf8');
 
       // Compile Main.java with UTF-8 encoding support
-      const compileRes = spawnSync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 20000, encoding: 'utf8' });
+      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 20000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
@@ -155,13 +189,13 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       }
 
       // Execute Main class
-      const runRes = spawnSync('java', ['Main'], { cwd: tmpDir, timeout: 15000, encoding: 'utf8' });
+      const runRes = await execAsync('java', ['Main'], { cwd: tmpDir, timeout: 15000 });
       try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
 
       if (runRes.error || runRes.status !== 0) {
         const errStr = runRes.stderr || 'Java Execution Error';
         return {
-          verdict: 'Runtime Error',
+          verdict: runRes.error?.code === 'ETIMEDOUT' ? 'Time Limit Exceeded' : 'Runtime Error',
           testResults: [{ testIndex: 0, passed: false, error: errStr, runtimeMs: 0 }],
           rawOutput: errStr,
           totalRuntimeMs: Date.now() - startTimeTotal
@@ -188,7 +222,7 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       fs.writeFileSync(sourcePath, wrappedScript, 'utf8');
 
       // Compile solution
-      const compileRes = spawnSync(compiler, ['-o', exePath, sourcePath], { cwd: tmpDir, timeout: 10000, encoding: 'utf8' });
+      const compileRes = await execAsync(compiler, ['-o', exePath, sourcePath], { cwd: tmpDir, timeout: 15000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
@@ -201,13 +235,13 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       }
 
       // Execute compiled executable
-      const runRes = spawnSync(exePath, [], { cwd: tmpDir, timeout: 8000, encoding: 'utf8' });
+      const runRes = await execAsync(exePath, [], { cwd: tmpDir, timeout: 10000 });
       try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
 
       if (runRes.error || runRes.status !== 0) {
         const errStr = runRes.stderr || 'Execution Error';
         return {
-          verdict: 'Runtime Error',
+          verdict: runRes.error?.code === 'ETIMEDOUT' ? 'Time Limit Exceeded' : 'Runtime Error',
           testResults: [{ testIndex: 0, passed: false, error: errStr, runtimeMs: 0 }],
           rawOutput: errStr,
           totalRuntimeMs: Date.now() - startTimeTotal
@@ -217,7 +251,6 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       return parseResultsOutput(runRes.stdout || '', runRes.stderr || '');
     } catch (e) {
       console.log(`[C/C++ Local Runner Warning]: Local compiler not found. Routing to Piston Cloud Execution Engine...`);
-    }
   }
 
   // 5. High-Speed Cloud Multi-Language Execution Fallback (Piston Engine API)

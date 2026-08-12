@@ -50,6 +50,13 @@ async function processSubmissionJob(data) {
   activeCountInDirectMode++;
   const { submissionId, language, code, customTemplate, testcases, timeLimitMs, memoryLimitMb, socketId, sessionId } = data;
 
+  if (ioInstance && activeCountInDirectMode > 1) {
+    const queueMsg = `Please wait, you are in queue: ${activeCountInDirectMode - 1} programs to be executed...`;
+    const payload = { activeCount: activeCountInDirectMode, queuePosition: activeCountInDirectMode - 1, message: queueMsg };
+    if (socketId) ioInstance.to(socketId).emit('queue_position_update', payload);
+    if (sessionId) ioInstance.to(`session_${sessionId}`).emit('queue_position_update', payload);
+  }
+
   try {
     const result = await executeCode({
       language,
@@ -144,7 +151,7 @@ async function clearSubmissionQueue() {
   }
   activeCountInDirectMode = 0;
   if (ioInstance) {
-    ioInstance.emit('queue_cleared', { timestamp: new Date(), message: 'Execution queue emergency flushed by Master Admin' });
+    ioInstance.emit('queue_cleared', { timestamp: new Date(), message: 'All execution processes were terminated. Run again.' });
   }
   return { success: true, timestamp: new Date() };
 }

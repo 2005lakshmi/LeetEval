@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const os = require('os');
 const UserAdmin = require('../models/UserAdmin');
 const AuditLog = require('../models/AuditLog');
 const { verifyAdminToken, verifyMasterOnly } = require('../middleware/authMiddleware');
@@ -208,6 +209,24 @@ router.post('/benchmark-simulate', async (req, res) => {
 
       const batchResults = await Promise.all(batchPromises);
       executionLogs.push(...batchResults);
+
+      const io = req.app.get('io');
+      if (io) {
+        const memUsedMb = Number((process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2));
+        const memTotalMb = Math.round(os.totalmem() / 1024 / 1024);
+        const ramPercentage = Math.min(100, Number(((process.memoryUsage().heapUsed / os.totalmem()) * 100).toFixed(1)));
+
+        io.emit('benchmark_telemetry_tick', {
+          completedCount: executionLogs.length,
+          totalExecutions: requestList.length,
+          recentLogs: batchResults,
+          ramUsedMb: memUsedMb,
+          ramTotalMb: memTotalMb,
+          ramPercentage,
+          v8HeapUsedMb: memUsedMb,
+          v8HeapTotalMb: Number((process.memoryUsage().heapTotal / 1024 / 1024).toFixed(2))
+        });
+      }
     }
 
     const overallEnd = process.hrtime.bigint();
