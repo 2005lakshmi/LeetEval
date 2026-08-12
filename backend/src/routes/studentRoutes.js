@@ -7,6 +7,7 @@ const Question = require('../models/Question');
 const Submission = require('../models/Submission');
 const AuditLog = require('../models/AuditLog');
 const { addSubmissionToQueue } = require('../services/queueService');
+const { getCachedRoom } = require('../services/roomCacheService');
 
 const secretKey = process.env.JWT_SECRET || 'super_secret_jwt_key_leet_eval_2026_change_in_prod';
 
@@ -21,7 +22,8 @@ router.post('/join', async (req, res) => {
     const cleanRoomCode = roomCode.trim().toUpperCase();
     const cleanUsn = usn.trim().toUpperCase();
 
-    const room = await Room.findOne({ roomCode: cleanRoomCode }).populate('paperId');
+    // 15-Second Sliding Window RAM Cache lookup (Extends 15 seconds on each access!)
+    const room = await getCachedRoom(cleanRoomCode);
     if (!room) {
       return res.status(404).json({ message: 'Invalid room code' });
     }

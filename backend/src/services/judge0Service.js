@@ -177,7 +177,7 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
     return parseResultsOutput(res.stdout || '', res.stderr || '');
   }
 
-  // 3. Java Native Compilation & Execution (javac Main.java && java Main)
+  // 3. Java Native Compilation & Execution (javac Main.java && java -Xmx128m Main)
   if (lang === 'java') {
     const tmpDir = path.join(os.tmpdir(), `java_run_${runId}`);
     try {
@@ -190,7 +190,6 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 20000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
         return {
           verdict: 'Compilation Error',
           testResults: [{ testIndex: 0, passed: false, error: compileErr.trim(), runtimeMs: 0 }],
@@ -199,10 +198,9 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
         };
       }
 
-      // Execute Main class
-      const runRes = await execAsync('java', ['Main'], { cwd: tmpDir, timeout: 15000 });
-      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
-
+      // Execute Main class with -Xmx128m RAM memory limit cap
+      const runRes = await execAsync('java', ['-Xmx128m', 'Main'], { cwd: tmpDir, timeout: 15000 });
+      
       if (runRes.error || runRes.status !== 0) {
         const errStr = runRes.stderr || 'Java Execution Error';
         return {
@@ -216,6 +214,9 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       return parseResultsOutput(runRes.stdout || '', runRes.stderr || '');
     } catch (e) {
       console.log(`[Java Local Runner Error]: ${e.message}`);
+    } finally {
+      // Guaranteed Immediate Temp Directory & Compiled Class File Cleanup
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
     }
   }
 
@@ -236,7 +237,6 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       const compileRes = await execAsync(compiler, ['-o', exePath, sourcePath], { cwd: tmpDir, timeout: 15000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
         return {
           verdict: 'Compilation Error',
           testResults: [{ testIndex: 0, passed: false, error: compileErr.trim(), runtimeMs: 0 }],
@@ -247,7 +247,6 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
 
       // Execute compiled executable
       const runRes = await execAsync(exePath, [], { cwd: tmpDir, timeout: 10000 });
-      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
 
       if (runRes.error || runRes.status !== 0) {
         const errStr = runRes.stderr || 'Execution Error';
@@ -262,6 +261,10 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       return parseResultsOutput(runRes.stdout || '', runRes.stderr || '');
     } catch (e) {
       console.log(`[C/C++ Local Runner Warning]: Local compiler not found. Routing to Piston Cloud Execution Engine...`);
+    } finally {
+      // Guaranteed Immediate Temp Directory & Compiled Binary File Cleanup
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(e){}
+    }
   }
 
   // 5. High-Speed Cloud Multi-Language Execution Fallback (Piston Engine API)
