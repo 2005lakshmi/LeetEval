@@ -64,7 +64,11 @@ export default function StudentWaitingRoom() {
           setAdmitted(true);
         }
       } catch (err) {
-        console.log('[Status Poll Error]:', err.message);
+        if (err.response?.status === 429) {
+          console.log('[Status Poll Notice]: Server processing high traffic. Retrying...');
+        } else {
+          console.log('[Status Poll Error]:', err.message);
+        }
       }
     };
 

@@ -44,7 +44,11 @@ export default function StudentJoin() {
         state: { name: formData.name, usn: formData.usn, roomCode: formData.roomCode, roomId: response.data.roomId } 
       });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to join test room. Please check room code.');
+      if (err.response?.status === 429) {
+        setError('Server is currently processing a high volume of student logins. Please wait 3 seconds and click Join Exam again.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to join test room. Please check room code.');
+      }
     } finally {
       setLoading(false);
     }
