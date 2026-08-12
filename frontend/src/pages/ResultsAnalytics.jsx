@@ -144,7 +144,7 @@ export default function ResultsAnalytics() {
               // Sequential 1-based index numbering: Testcase 1, Testcase 2, etc.
               const indexNum = idx + 1;
               const passed = Boolean(tc.passed);
-              const errorMsg = tc.error || '';
+              const errorMsg = tc.error || tc.stderr || tc.consoleError || (!passed ? 'Printed output does not match expected output.' : '');
               const runtimeVal = tc.runtimeMs !== undefined ? tc.runtimeMs : (tc.runtime !== undefined ? tc.runtime : 0);
               const inputVal = tc.input !== undefined ? (typeof tc.input === 'object' ? JSON.stringify(tc.input) : String(tc.input)) : '';
               const expectedVal = tc.expected !== undefined ? String(tc.expected) : (tc.expectedOutput !== undefined ? String(tc.expectedOutput) : '');
@@ -159,28 +159,36 @@ export default function ResultsAnalytics() {
                       : 'bg-rose-50/80 border-rose-200 text-rose-950'
                   }`}
                 >
-                  <div className="flex items-center justify-between font-bold">
+                  <div className="flex items-center justify-between font-bold border-b border-black/5 pb-2">
                     <div className="flex items-center space-x-2">
                       {passed ? (
-                        <span className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center text-[10px] font-bold border border-emerald-300">
+                        <span className="w-5 h-5 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center text-[10px] font-extrabold border border-emerald-300">
                           ✓
                         </span>
                       ) : (
-                        <span className="w-5 h-5 rounded-full bg-rose-200 text-rose-800 flex items-center justify-center text-[10px] font-bold border border-rose-300">
+                        <span className="w-5 h-5 rounded-full bg-rose-200 text-rose-800 flex items-center justify-center text-[10px] font-extrabold border border-rose-300">
                           ✕
                         </span>
                       )}
-                      <span className="text-[#111111] text-sm font-extrabold">Testcase {indexNum}</span>
+                      <span className="text-[#111111] text-sm font-extrabold">Testcase #{indexNum} Call</span>
+                      <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-extrabold ${passed ? 'bg-emerald-200 text-emerald-900 border border-emerald-400' : 'bg-rose-200 text-rose-900 border border-rose-400'}`}>
+                        {passed ? 'PASSED' : 'FAILED'}
+                      </span>
                     </div>
-                    <span className="text-[#555555] font-mono text-[11px] font-bold">{runtimeVal}ms</span>
+                    <span className="text-[#555555] font-mono text-[11px] font-bold">Execution Time: {runtimeVal}ms</span>
                   </div>
 
                   {/* Testcase Input & Output Details for ALL Testcases */}
                   <div className="mt-2 pl-7 space-y-2 text-[11px] font-mono">
-                    {/* Error Message if failed */}
-                    {!passed && errorMsg && (
-                      <div className="text-rose-700 font-bold bg-rose-100/80 p-2 rounded border border-rose-200 whitespace-pre-wrap mb-1">
-                        Console / Runtime Error: '{errorMsg}'
+                    {/* Console / Runtime Error Message */}
+                    {errorMsg && (
+                      <div className="p-2.5 rounded-lg bg-rose-100/90 border border-rose-300 text-rose-900 font-mono text-xs space-y-1 mb-1">
+                        <div className="flex items-center space-x-1.5 text-rose-800 font-extrabold text-[11px] uppercase tracking-wide">
+                          <span>⚠️ Console / Runtime Error (Testcase #{indexNum} Call):</span>
+                        </div>
+                        <pre className="font-mono text-xs whitespace-pre-wrap leading-relaxed select-text font-bold text-rose-900 bg-white/80 p-2 rounded border border-rose-200">
+                          {errorMsg}
+                        </pre>
                       </div>
                     )}
 
@@ -195,7 +203,7 @@ export default function ResultsAnalytics() {
 
                     {expectedVal && (
                       <div>
-                        <div className="text-[10px] font-bold text-emerald-800 uppercase">Expected:</div>
+                        <div className="text-[10px] font-bold text-emerald-800 uppercase">Expected Output:</div>
                         <pre className="font-mono text-xs whitespace-pre-wrap bg-slate-900 p-2.5 rounded-lg border border-slate-800 text-emerald-400 font-bold mt-0.5 select-text">
                           {expectedVal.replace(/\\n/g, '\n')}
                         </pre>

@@ -1070,27 +1070,37 @@ export default function StudentExam() {
                         const inputVal = tr.input !== undefined ? (typeof tr.input === 'object' ? JSON.stringify(tr.input) : String(tr.input)) : '';
                         const expectedVal = tr.expected !== undefined ? String(tr.expected) : (tr.expectedOutput !== undefined ? String(tr.expectedOutput) : '');
                         const actualVal = tr.output !== undefined ? String(tr.output) : (tr.actualOutput !== undefined ? String(tr.actualOutput) : '');
+                        const errorMsg = tr.error || tr.stderr || tr.consoleError || (!passed ? 'Printed output does not match expected output.' : '');
 
                         return (
-                          <div key={idx} className={`p-3 rounded-lg border space-y-1.5 font-mono text-xs ${
+                          <div key={idx} className={`p-3.5 rounded-xl border space-y-2 font-mono text-xs ${
                             passed ? 'bg-[#1b2a22] border-[#22543d]' : 'bg-[#2a1b1e] border-[#54222b]'
                           }`}>
-                            <div className="flex items-center justify-between font-bold">
+                            <div className="flex items-center justify-between font-bold border-b border-white/5 pb-2">
                               <div className="flex items-center space-x-2">
                                 {passed ? (
-                                  <span className="w-5 h-5 rounded-full bg-[#00b8a3]/20 text-[#00b8a3] flex items-center justify-center text-[10px] border border-[#00b8a3]/40">✓</span>
+                                  <span className="w-5 h-5 rounded-full bg-[#00b8a3]/20 text-[#00b8a3] flex items-center justify-center text-[10px] border border-[#00b8a3]/40 font-extrabold">✓</span>
                                 ) : (
-                                  <span className="w-5 h-5 rounded-full bg-[#FF375F]/20 text-[#FF375F] flex items-center justify-center text-[10px] border border-[#FF375F]/40">✕</span>
+                                  <span className="w-5 h-5 rounded-full bg-[#FF375F]/20 text-[#FF375F] flex items-center justify-center text-[10px] border border-[#FF375F]/40 font-extrabold">✕</span>
                                 )}
-                                <span className="text-white text-sm font-extrabold">Testcase {indexNum}</span>
+                                <span className="text-white text-sm font-extrabold">Testcase #{indexNum} Call</span>
+                                <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-bold ${passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                                  {passed ? 'PASSED' : 'FAILED'}
+                                </span>
                               </div>
-                              <span className="text-[#8a8a8a] text-xs font-mono">{runtimeVal}ms</span>
+                              <span className="text-[#8a8a8a] text-xs font-mono font-semibold">Execution Time: {runtimeVal}ms</span>
                             </div>
 
                             <div className="pl-7 space-y-2 text-xs">
-                              {tr.error && (
-                                <div className="text-[#FF375F] font-mono text-xs font-bold bg-[#FF375F]/10 p-2 rounded border border-[#FF375F]/20 whitespace-pre-wrap">
-                                  Console / Runtime Error: '{tr.error}'
+                              {/* Console / Runtime Error Display */}
+                              {errorMsg && (
+                                <div className="p-2.5 rounded-lg bg-[#2b1419] border border-[#FF375F]/40 text-[#FF6B8B] font-mono text-xs space-y-1">
+                                  <div className="flex items-center space-x-1.5 text-[#FF375F] font-bold text-[11px] uppercase tracking-wide">
+                                    <span>⚠️ Console / Runtime Error (Testcase #{indexNum} Call):</span>
+                                  </div>
+                                  <pre className="font-mono text-xs whitespace-pre-wrap leading-relaxed select-text font-semibold text-rose-200 bg-black/40 p-2 rounded border border-rose-900/40">
+                                    {errorMsg}
+                                  </pre>
                                 </div>
                               )}
 
@@ -1105,7 +1115,7 @@ export default function StudentExam() {
 
                               {expectedVal && (
                                 <div>
-                                  <div className="text-[11px] font-bold text-slate-400">Expected:</div>
+                                  <div className="text-[11px] font-bold text-slate-400">Expected Output:</div>
                                   <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-[#00b8a3] font-bold mt-0.5 select-text">
                                     {formatOutputStr(expectedVal)}
                                   </pre>

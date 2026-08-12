@@ -979,16 +979,28 @@ int main() {
                       const outVal = r.output !== undefined ? String(r.output).replace(/\\n/g, '\n') : (r.actualOutput !== undefined ? String(r.actualOutput).replace(/\\n/g, '\n') : '');
                       const expVal = r.expected !== undefined ? String(r.expected).replace(/\\n/g, '\n') : (r.expectedOutput !== undefined ? String(r.expectedOutput).replace(/\\n/g, '\n') : '');
                       const inpVal = r.input !== undefined ? (typeof r.input === 'object' ? JSON.stringify(r.input) : String(r.input)).replace(/\\n/g, '\n') : '';
+                      const errVal = r.error || (!r.passed ? 'Printed output does not match expected output.' : '');
 
                       return (
                         <div key={i} className="p-3 bg-slate-900/90 rounded-xl border border-slate-800 space-y-2 text-xs">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               {r.passed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <XCircle className="w-4 h-4 text-rose-400" />}
-                              <span className="font-bold text-slate-200">Testcase {r.testIndex || i + 1}: <strong className={r.passed ? "text-emerald-400" : "text-rose-400"}>{r.passed ? 'PASSED' : 'FAILED'}</strong></span>
+                              <span className="font-bold text-slate-200">Testcase #{r.testIndex || i + 1} Call: <strong className={r.passed ? "text-emerald-400" : "text-rose-400"}>{r.passed ? 'PASSED' : 'FAILED'}</strong></span>
                             </div>
-                            <span className="text-[11px] text-slate-400 font-bold">Runtime: {r.runtimeMs}ms</span>
+                            <span className="text-[11px] text-slate-400 font-bold">Execution Time: {r.runtimeMs}ms</span>
                           </div>
+
+                          {errVal && (
+                            <div className="p-2.5 rounded-lg bg-rose-950/60 border border-rose-800/80 text-rose-300 font-mono text-xs space-y-1">
+                              <div className="flex items-center space-x-1.5 text-rose-400 font-bold text-[11px] uppercase tracking-wide">
+                                <span>⚠️ Console / Runtime Error (Testcase #{r.testIndex || i + 1} Call):</span>
+                              </div>
+                              <pre className="font-mono text-xs whitespace-pre-wrap leading-relaxed select-text font-semibold text-rose-200 bg-black/60 p-2 rounded border border-rose-900/60">
+                                {errVal}
+                              </pre>
+                            </div>
+                          )}
 
                           {(inpVal || expVal || outVal) && (
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2 border-t border-slate-800/60">
@@ -1016,12 +1028,6 @@ int main() {
                                   </pre>
                                 </div>
                               )}
-                            </div>
-                          )}
-
-                          {r.error && (
-                            <div className="text-[11px] text-rose-400 bg-rose-950/40 p-2 rounded-lg border border-rose-900/50 whitespace-pre-wrap">
-                              {r.error}
                             </div>
                           )}
                         </div>
