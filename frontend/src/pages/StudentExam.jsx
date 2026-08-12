@@ -1067,10 +1067,10 @@ export default function StudentExam() {
                         const indexNum = idx + 1;
                         const passed = Boolean(tr.passed);
                         const runtimeVal = tr.runtimeMs !== undefined ? tr.runtimeMs : (tr.runtime !== undefined ? tr.runtime : 0);
-                        const inputVal = tr.input !== undefined ? (typeof tr.input === 'object' ? JSON.stringify(tr.input) : String(tr.input)) : '';
-                        const expectedVal = tr.expected !== undefined ? String(tr.expected) : (tr.expectedOutput !== undefined ? String(tr.expectedOutput) : '');
-                        const actualVal = tr.output !== undefined ? String(tr.output) : (tr.actualOutput !== undefined ? String(tr.actualOutput) : '');
-                        const errorMsg = tr.error || tr.stderr || tr.consoleError || (!passed ? 'Printed output does not match expected output.' : '');
+                        const inputVal = tr.input !== undefined && tr.input !== null ? (typeof tr.input === 'object' ? JSON.stringify(tr.input) : String(tr.input)) : '';
+                        const expectedVal = tr.expectedOutput !== undefined ? String(tr.expectedOutput) : (tr.expected !== undefined ? String(tr.expected) : '');
+                        const actualVal = tr.actualOutput !== undefined ? String(tr.actualOutput) : (tr.output !== undefined ? String(tr.output) : '');
+                        const errorMsg = tr.error || tr.stderr || tr.consoleError || (!passed ? `Output Mismatch: Your program returned/printed ${actualVal !== '' ? `"${actualVal.replace(/\n/g, '\\n')}"` : '(no output)'} but expected "${expectedVal.replace(/\n/g, '\\n')}".` : '');
 
                         return (
                           <div key={idx} className={`p-3.5 rounded-xl border space-y-2 font-mono text-xs ${
@@ -1092,7 +1092,7 @@ export default function StudentExam() {
                             </div>
 
                             <div className="pl-7 space-y-2 text-xs">
-                              {/* Console / Runtime Error Display */}
+                              {/* Console / Runtime Error / Mismatch Display */}
                               {errorMsg && (
                                 <div className="p-2.5 rounded-lg bg-[#2b1419] border border-[#FF375F]/40 text-[#FF6B8B] font-mono text-xs space-y-1">
                                   <div className="flex items-center space-x-1.5 text-[#FF375F] font-bold text-[11px] uppercase tracking-wide">

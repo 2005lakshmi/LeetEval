@@ -80,14 +80,25 @@ function parseResultsOutput(stdout, stderr = '') {
     } else if (parsed && typeof parsed === 'object') {
       verdict = parsed.status || (parsed.passed === parsed.total ? 'Accepted' : 'Wrong Answer');
       const rawCases = parsed.testCases || parsed.testResults || [parsed];
-      testResults = rawCases.map((tc, idx) => ({
-        testIndex: tc.testCase || idx + 1,
-        passed: Boolean(tc.passed),
-        output: tc.actualOutput !== undefined ? String(tc.actualOutput) : String(tc.output || ''),
-        expected: String(tc.expectedOutput || tc.expected || ''),
-        error: tc.error || '',
-        runtimeMs: tc.runtime || tc.runtimeMs || 0
-      }));
+      testResults = rawCases.map((tc, idx) => {
+        const actualOutput = tc.actualOutput !== undefined ? String(tc.actualOutput) : (tc.output !== undefined ? String(tc.output) : '');
+        const expectedOutput = tc.expectedOutput !== undefined ? String(tc.expectedOutput) : (tc.expected !== undefined ? String(tc.expected) : '');
+        const runtime = tc.runtime !== undefined ? tc.runtime : (tc.runtimeMs !== undefined ? tc.runtimeMs : 0);
+
+        return {
+          testCase: tc.testCase || idx + 1,
+          testIndex: tc.testCase || idx + 1,
+          passed: Boolean(tc.passed),
+          input: tc.input !== undefined ? tc.input : null,
+          actualOutput: actualOutput,
+          output: actualOutput,
+          expectedOutput: expectedOutput,
+          expected: expectedOutput,
+          error: tc.error || '',
+          runtime: runtime,
+          runtimeMs: runtime
+        };
+      });
       totalTime = testResults.reduce((acc, curr) => acc + (curr.runtimeMs || 0), 0);
     }
 
