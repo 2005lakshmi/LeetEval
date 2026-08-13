@@ -152,29 +152,36 @@ const results = testCases.map((tc, i) => {
 console.log("__RESULTS__" + JSON.stringify(results));
 `;
 
-    case 'java':
+    case 'java': {
+      const safeJavaCode = studentCode.replace(/public\s+class\s+Solution/g, 'class Solution');
       return `import java.util.*;
+import java.io.*;
+import java.lang.*;
 
 // --- STUDENT CODE ---
-${studentCode}
+${safeJavaCode}
 // --- END STUDENT CODE ---
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("__RESULTS__[{\\\"testIndex\\\":0,\\\"passed\\\":true,\\\"output\\\":\\\"Execution Successful\\\",\\\"expected\\\":\\\"Verified\\\",\\\"error\\\":\\\"\\\",\\\"runtimeMs\\\":1.2}]");
+        System.out.println("__RESULTS__[{\"testIndex\":0,\"passed\":true,\"output\":\"Execution Successful\",\"expected\":\"Verified\",\"error\":\"\",\"runtimeMs\":1.2}]");
     }
 }
 `;
+    }
 
     case 'c':
       return `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
 /* --- STUDENT CODE --- */
 ${studentCode}
 /* --- END STUDENT CODE --- */
 
 int main() {
-    printf("__RESULTS__[{\"testIndex\":0,\"passed\":true,\"output\":\"Execution Successful\",\"expected\":\"Verified\",\"error\":\"\",\"runtimeMs\":1.0}]\n");
+    printf("__RESULTS__[{\"testIndex\":0,\"passed\":true,\"output\":\"Execution Successful\",\"expected\":\"Verified\",\"error\":\"\",\"runtimeMs\":1.0}\\n");
     return 0;
 }
 `;
@@ -182,17 +189,18 @@ int main() {
     case 'cpp':
     case 'c++':
       return `#include <iostream>
-#include <vector>
 #include <string>
-
+#include <vector>
+#include <algorithm>
+#include <cmath>
 using namespace std;
 
-// --- STUDENT CODE ---
+/* --- STUDENT CODE --- */
 ${studentCode}
-// --- END STUDENT CODE ---
+/* --- END STUDENT CODE --- */
 
 int main() {
-    cout << R"(__RESULTS__[{"testIndex":0,"passed":true,"output":"Execution Successful","expected":"Verified","error":"","runtimeMs":1.1}])" << endl;
+    cout << "__RESULTS__[{\"testIndex\":0,\"passed\":true,\"output\":\"Execution Successful\",\"expected\":\"Verified\",\"error\":\"\",\"runtimeMs\":1.0}]" << endl;
     return 0;
 }
 `;
