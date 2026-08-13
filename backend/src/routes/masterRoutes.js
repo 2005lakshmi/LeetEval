@@ -138,22 +138,27 @@ router.post('/benchmark-simulate', async (req, res) => {
       pythonCode = 'print("OK")',
       javaCode = 'public class Main { public static void main(String[] args){ System.out.println("OK"); } }',
       cppCode = '#include <iostream>\nusing namespace std; int main(){ cout << "OK" << endl; return 0; }',
-      jsCode = 'console.log("OK");'
+      jsCode = 'console.log("OK");',
+      cCmd,
+      pythonCmd,
+      javaCmd,
+      cppCmd,
+      jsCmd
     } = req.body;
 
     const requestList = [];
-    const addJobs = (lang, code, count) => {
+    const addJobs = (lang, code, count, customCommand) => {
       const c = Math.max(0, parseInt(count, 10) || 0);
       for (let i = 0; i < c; i++) {
-        requestList.push({ language: lang, code, testcases: [{ input: '1', expectedOutput: 'OK' }] });
+        requestList.push({ language: lang, code, customCommand });
       }
     };
 
-    addJobs('c', cCode, cCount);
-    addJobs('python', pythonCode, pythonCount);
-    addJobs('java', javaCode, javaCount);
-    addJobs('cpp', cppCode, cppCount);
-    addJobs('javascript', jsCode, jsCount);
+    addJobs('c', cCode, cCount, cCmd);
+    addJobs('python', pythonCode, pythonCount, pythonCmd);
+    addJobs('java', javaCode, javaCount, javaCmd);
+    addJobs('cpp', cppCode, cppCount, cppCmd);
+    addJobs('javascript', jsCode, jsCount, jsCmd);
 
     if (requestList.length === 0) {
       return res.status(400).json({ message: 'Please enter at least 1 execution count for any language' });
@@ -180,7 +185,8 @@ router.post('/benchmark-simulate', async (req, res) => {
         try {
           const res = await executeRawBenchmarkCode({
             language: job.language,
-            code: job.code
+            code: job.code,
+            customCommand: job.customCommand
           });
           const jobEnd = process.hrtime.bigint();
           const latencyMs = Number(jobEnd - jobStart) / 1000000;

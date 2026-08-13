@@ -454,7 +454,10 @@ export default function MasterDashboard() {
               {/* C Code Card */}
               <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
-                  <span className="text-xs font-extrabold text-[#0E52FF] uppercase">C Language Benchmark</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-extrabold text-[#0E52FF] uppercase">C Benchmark</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-50 text-[#0E52FF] border border-blue-200">File: solution.c</span>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
@@ -477,7 +480,7 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C Code Editor:</label>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C Code Editor (solution.c):</label>
                 <div className="h-36 rounded-lg overflow-hidden border border-slate-200">
                   <CodeEditor
                     value={benchForm.cCode}
@@ -500,7 +503,10 @@ export default function MasterDashboard() {
               {/* Python Code Card */}
               <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
-                  <span className="text-xs font-extrabold text-amber-700 uppercase">Python Benchmark</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-extrabold text-amber-700 uppercase">Python Benchmark</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">File: main.py</span>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
@@ -523,7 +529,7 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Python Code Editor:</label>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Python Code Editor (main.py):</label>
                 <div className="h-36 rounded-lg overflow-hidden border border-slate-200">
                   <CodeEditor
                     value={benchForm.pythonCode}
@@ -548,7 +554,7 @@ export default function MasterDashboard() {
                 <div className="flex items-center justify-between font-mono">
                   <div className="flex items-center space-x-2">
                     <span className="text-xs font-extrabold text-rose-700 uppercase">Java Benchmark</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">Java Filename: Main.java</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">File: Main.java</span>
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
@@ -595,7 +601,10 @@ export default function MasterDashboard() {
               {/* C++ Code Card */}
               <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
-                  <span className="text-xs font-extrabold text-purple-700 uppercase">C++ Benchmark</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-extrabold text-purple-700 uppercase">C++ Benchmark</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200">File: solution.cpp</span>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
@@ -618,7 +627,7 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C++ Code Editor:</label>
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C++ Code Editor (solution.cpp):</label>
                 <div className="h-36 rounded-lg overflow-hidden border border-slate-200">
                   <CodeEditor
                     value={benchForm.cppCode}
@@ -641,7 +650,10 @@ export default function MasterDashboard() {
               {/* JavaScript Code Card */}
               <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
-                  <span className="text-xs font-extrabold text-amber-600 uppercase">JavaScript Benchmark</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-extrabold text-amber-600 uppercase">JavaScript Benchmark</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-600 border border-amber-200">File: main.js</span>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"

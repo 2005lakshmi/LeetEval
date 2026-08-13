@@ -390,16 +390,33 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
   try {
     fs.mkdirSync(tmpDir, { recursive: true });
 
+    let fileName = 'main.py';
+    if (lang === 'c') fileName = 'solution.c';
+    else if (lang === 'cpp' || lang === 'c++') fileName = 'solution.cpp';
+    else if (lang === 'java') fileName = 'Main.java';
+    else if (lang === 'javascript' || lang === 'js') fileName = 'main.js';
+
+    const srcPath = path.join(tmpDir, fileName);
+    const codeToWrite = (lang === 'java' && !code.includes('public class Main'))
+      ? code.replace(/public\s+class\s+\w+/, 'public class Main')
+      : code;
+    fs.writeFileSync(srcPath, codeToWrite, 'utf8');
+
+    // If user provided a custom shell command, run it directly inside tmpDir!
+    if (customCommand && customCommand.trim()) {
+      const res = await execAsync(customCommand.trim(), [], { cwd: tmpDir, timeout: 15000, shell: true });
+      const rawOut = (res.stdout || '') + (res.stderr ? `\n${res.stderr}` : '');
+      return {
+        verdict: (res.error || res.status !== 0) ? 'Runtime / Shell Error' : 'Success',
+        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        totalRuntimeMs: Date.now() - startTimeTotal
+      };
+    }
+
     if (lang === 'python') {
-      const srcPath = path.join(tmpDir, 'main.py');
-      fs.writeFileSync(srcPath, code, 'utf8');
-
-      let pythonCmd = customCommand || 'python';
-      if (!customCommand) {
-        try { execSync('python --version', { stdio: 'ignore' }); } catch (e) { pythonCmd = 'python3'; }
-      }
-
-      const res = await execAsync(pythonCmd, [srcPath], { cwd: tmpDir, timeout: 10000 });
+      let pythonCmd = 'python';
+      try { execSync('python --version', { stdio: 'ignore' }); } catch (e) { pythonCmd = 'python3'; }
+      const res = await execAsync(pythonCmd, ['main.py'], { cwd: tmpDir, timeout: 10000 });
       const rawOut = (res.stdout || '') + (res.stderr ? `\n${res.stderr}` : '');
       return {
         verdict: (res.error || res.status !== 0) ? 'Runtime Error' : 'Success',
@@ -409,10 +426,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
     }
 
     if (lang === 'javascript' || lang === 'js') {
-      const srcPath = path.join(tmpDir, 'main.js');
-      fs.writeFileSync(srcPath, code, 'utf8');
-      const nodeCmd = customCommand || 'node';
-      const res = await execAsync(nodeCmd, [srcPath], { cwd: tmpDir, timeout: 10000 });
+      const res = await execAsync('node', ['main.js'], { cwd: tmpDir, timeout: 10000 });
       const rawOut = (res.stdout || '') + (res.stderr ? `\n${res.stderr}` : '');
       return {
         verdict: (res.error || res.status !== 0) ? 'Runtime Error' : 'Success',
@@ -422,11 +436,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
     }
 
     if (lang === 'c') {
-      const srcPath = path.join(tmpDir, 'solution.c');
-      const exePath = path.join(tmpDir, 'solution.exe');
-      fs.writeFileSync(srcPath, code, 'utf8');
-
-      const compileRes = await execAsync('gcc', ['-o', exePath, 'solution.c'], { cwd: tmpDir, timeout: 10000 });
+      const compileRes = await execAsync('gcc', ['-o', 'solution.exe', 'solution.c'], { cwd: tmpDir, timeout: 10000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         return {
@@ -436,7 +446,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
         };
       }
 
-      const runRes = await execAsync(exePath, [], { cwd: tmpDir, timeout: 10000 });
+      const runRes = await execAsync('./solution.exe', [], { cwd: tmpDir, timeout: 10000, shell: true });
       const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
       return {
         verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
@@ -446,11 +456,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
     }
 
     if (lang === 'cpp' || lang === 'c++') {
-      const srcPath = path.join(tmpDir, 'solution.cpp');
-      const exePath = path.join(tmpDir, 'solution.exe');
-      fs.writeFileSync(srcPath, code, 'utf8');
-
-      const compileRes = await execAsync('g++', ['-o', exePath, 'solution.cpp'], { cwd: tmpDir, timeout: 10000 });
+      const compileRes = await execAsync('g++', ['-o', 'solution.exe', 'solution.cpp'], { cwd: tmpDir, timeout: 10000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         return {
@@ -460,7 +466,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
         };
       }
 
-      const runRes = await execAsync(exePath, [], { cwd: tmpDir, timeout: 10000 });
+      const runRes = await execAsync('./solution.exe', [], { cwd: tmpDir, timeout: 10000, shell: true });
       const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
       return {
         verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
@@ -470,10 +476,6 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
     }
 
     if (lang === 'java') {
-      const mainPath = path.join(tmpDir, 'Main.java');
-      const safeJava = code.includes('public class Main') ? code : code.replace(/public\s+class\s+\w+/, 'public class Main');
-      fs.writeFileSync(mainPath, safeJava, 'utf8');
-
       const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 15000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
