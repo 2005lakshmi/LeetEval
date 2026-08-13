@@ -9,6 +9,9 @@ const AuditLog = require('../models/AuditLog');
 const { addSubmissionToQueue } = require('../services/queueService');
 const { getCachedRoom } = require('../services/roomCacheService');
 
+// In-memory session status cache (5-second TTL) to reduce MongoDB polling load
+const sessionStatusCache = new Map();
+
 const secretKey = process.env.JWT_SECRET || 'super_secret_jwt_key_leet_eval_2026_change_in_prod';
 
 // Join or Reconnect to exam room
@@ -121,13 +124,34 @@ router.post('/join', async (req, res) => {
 // Quick Session Status Check (for Waiting Room Polling)
 router.get('/session-status/:sessionId', async (req, res) => {
   try {
-    const session = await StudentSession.findById(req.params.sessionId);
+    const sid = req.params.sessionId;
+    const now = Date.now();
+    
+    // 5-second sliding window cache for session status polling
+    const cached = sessionStatusCache.get(sid);
+    if (cached && cached.expireAt > now) {
+      cached.expireAt = now + 5000; // Sliding window refresh
+      return res.json(cached.data);
+    }
+    
+    const session = await StudentSession.findById(sid);
     if (!session) return res.status(404).json({ message: 'Session not found' });
-    res.json({
+    
+    const responseData = {
       sessionId: session._id,
       status: session.status,
       resumeToken: session.resumeToken
-    });
+    };
+    
+    // Cache for 5 seconds with sliding window
+    sessionStatusCache.set(sid, { data: responseData, expireAt: now + 5000 });
+    
+    // Invalidate cache when status changes to admitted/active (so student gets instant approval)
+    if (['admitted', 'active'].includes(session.status)) {
+      sessionStatusCache.delete(sid);
+    }
+    
+    res.json(responseData);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

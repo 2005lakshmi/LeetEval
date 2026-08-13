@@ -5,7 +5,7 @@ import { io } from 'socket.io-client';
 import confetti from 'canvas-confetti';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { Clock, ShieldAlert, Play, Send, CheckCircle2, XCircle, AlertTriangle, Maximize2, RotateCcw, FileText, Code2, Terminal, ChevronRight, Check, RefreshCw, Lock, Minimize2, GripVertical, GripHorizontal, LogOut } from 'lucide-react';
+import { Clock, ShieldAlert, Play, Send, CheckCircle2, XCircle, AlertTriangle, Maximize2, RotateCcw, FileText, Code2, Terminal, ChevronRight, Check, RefreshCw, Lock, Minimize2, GripVertical, GripHorizontal, LogOut, Save } from 'lucide-react';
 
 export default function StudentExam() {
   const { sessionId } = useParams();
@@ -49,6 +49,7 @@ export default function StudentExam() {
   const timerRef = useRef(null);
 
   const [saveStatus, setSaveStatus] = useState('Saved');
+  const [executionPhase, setExecutionPhase] = useState('idle'); // idle | pending | compiling | executing
 
   const [sessionError, setSessionError] = useState(null);
 
@@ -141,6 +142,7 @@ export default function StudentExam() {
     socket.on('submission_result', (data) => {
       setRunning(false);
       setSubmitting(false);
+      setExecutionPhase('idle');
       setVerdict(data.verdict);
       setRawOutput(data.rawOutput || '');
       setTestResults(data.testResults);
@@ -161,9 +163,21 @@ export default function StudentExam() {
       setRawOutput(`[QUEUE NOTICE]: ${data.message || 'Please wait, you are in queue to be executed...'}`);
     });
 
+    socket.on('execution_phase_update', (data) => {
+      setExecutionPhase(data.phase || 'compiling');
+      if (data.phase === 'pending' && data.queuePosition) {
+        setRawOutput(`⏳ Pending... ${data.queuePosition} program(s) ahead of you in the queue.`);
+      } else if (data.phase === 'compiling') {
+        setRawOutput('🔧 Compiling your code...');
+      } else if (data.phase === 'executing') {
+        setRawOutput('⚡ Executing against testcases...');
+      }
+    });
+
     socket.on('queue_cleared', (data) => {
       setRunning(false);
       setSubmitting(false);
+      setExecutionPhase('idle');
       setVerdict('Execution Flushed');
       setRawOutput(data.message || 'All execution processes were terminated. Run again.');
     });
@@ -352,27 +366,39 @@ export default function StudentExam() {
     }
   };
 
-  // Autosave code on edit
+  // Code change handler — saves to local React state + localStorage only (NO auto HTTP saves)
   const handleCodeChange = (newCode) => {
     const currentQ = examData?.questions[activeQuestionIndex];
     if (!currentQ) return;
 
     setCodeMap((prev) => ({ ...prev, [currentQ._id]: newCode }));
-    setSaveStatus('Saving...');
+    setSaveStatus('Unsaved');
 
-    clearTimeout(window.autosaveTimer);
-    window.autosaveTimer = setTimeout(async () => {
-      try {
-        await axios.post('/api/student/autosave', {
-          sessionId,
-          questionId: currentQ._id,
-          code: newCode
-        });
-        setSaveStatus('Saved');
-      } catch (err) {
-        setSaveStatus('Error saving');
-      }
-    }, 1200);
+    // Backup to localStorage immediately (zero network cost)
+    try {
+      localStorage.setItem(`leeteval_code_${sessionId}_${currentQ._id}`, newCode);
+    } catch (e) {}
+  };
+
+  // Explicit manual save to backend
+  const handleManualSave = async () => {
+    const currentQ = examData?.questions[activeQuestionIndex];
+    if (!currentQ) return;
+    const currentCode = codeMap[currentQ._id];
+    if (!currentCode && currentCode !== '') return;
+
+    setSaveStatus('Saving...');
+    try {
+      await axios.post('/api/student/autosave', {
+        sessionId,
+        questionId: currentQ._id,
+        code: currentCode
+      });
+      setSaveStatus('Saved ✓');
+      setTimeout(() => setSaveStatus('Saved'), 2000);
+    } catch (err) {
+      setSaveStatus('Save failed');
+    }
   };
 
   // Handle Question Navigation with Sequential Lock Check
@@ -407,6 +433,7 @@ export default function StudentExam() {
     if (!currentQ) return;
 
     setRunning(true);
+    setExecutionPhase('pending');
     setVerdict('Running...');
     setRawOutput('');
     setTestResults(null);
@@ -438,6 +465,7 @@ export default function StudentExam() {
       }
     } catch (err) {
       setRunning(false);
+      setExecutionPhase('idle');
       setVerdict('Runtime Error');
       setRawOutput(err.response?.data?.message || err.message || 'Execution failed');
     }
@@ -449,6 +477,7 @@ export default function StudentExam() {
     if (!currentQ) return;
 
     setSubmitting(true);
+    setExecutionPhase('pending');
     setVerdict('Submitting...');
     setRawOutput('');
     setTestResults(null);
@@ -485,6 +514,7 @@ export default function StudentExam() {
       }
     } catch (err) {
       setSubmitting(false);
+      setExecutionPhase('idle');
       setVerdict('Runtime Error');
       setRawOutput(err.response?.data?.message || err.message || 'Submission failed');
     }
@@ -737,10 +767,22 @@ export default function StudentExam() {
             <span>Warnings: {warningCount}/{warningLimit}</span>
           </div>
 
-          {/* Autosave Indicator */}
-          <div className="text-xs text-[#8a8a8a] font-mono hidden md:block">
-            {saveStatus}
-          </div>
+          {/* Manual Save Button */}
+          <button
+            onClick={handleManualSave}
+            disabled={saveStatus === 'Saving...'}
+            className={`flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+              saveStatus === 'Saved ✓' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+              saveStatus === 'Saving...' ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400 animate-pulse' :
+              saveStatus === 'Save failed' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' :
+              saveStatus === 'Unsaved' ? 'bg-orange-500/10 border-orange-500/30 text-orange-400' :
+              'bg-[#282828] border-[#3e3e3e] text-[#8a8a8a] hover:text-white hover:border-[#555]'
+            }`}
+            title="Save code to server"
+          >
+            <Save className="w-3 h-3" />
+            <span className="hidden md:inline">{saveStatus}</span>
+          </button>
 
           {/* Timer Countdown */}
           <div className="flex items-center space-x-1.5 px-3 py-1 rounded-md bg-[#333333] border border-[#444444] text-[#FFA116] font-mono font-bold text-xs">
@@ -978,7 +1020,7 @@ export default function StudentExam() {
                   className="px-4 py-1.5 rounded bg-[#3e3e3e] hover:bg-[#4a4a4a] text-white text-xs font-semibold flex items-center space-x-1.5 transition-colors disabled:opacity-50"
                 >
                   <Play className="w-3.5 h-3.5 text-[#00b8a3] fill-[#00b8a3]" />
-                  <span>{running ? 'Running...' : 'Run Code'}</span>
+                  <span>{running ? (executionPhase === 'pending' ? '⏳ In Queue...' : executionPhase === 'compiling' ? '🔧 Compiling...' : executionPhase === 'executing' ? '⚡ Executing...' : 'Running...') : 'Run Code'}</span>
                 </button>
 
                 <button
@@ -987,10 +1029,30 @@ export default function StudentExam() {
                   className="px-5 py-1.5 rounded bg-[#00b8a3] hover:bg-[#00a390] text-black font-extrabold text-xs flex items-center space-x-1.5 transition-colors disabled:opacity-50 shadow-md"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>{submitting ? 'Submitting...' : 'Submit'}</span>
+                  <span>{submitting ? (executionPhase === 'pending' ? '⏳ In Queue...' : executionPhase === 'compiling' ? '🔧 Compiling...' : executionPhase === 'executing' ? '⚡ Executing...' : 'Submitting...') : 'Submit'}</span>
                 </button>
               </div>
             </div>
+
+            {/* Live Execution Phase Status Bar */}
+            {(running || submitting) && executionPhase !== 'idle' && (
+              <div className="flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-[#1a1a2e] to-[#16213e] border-b border-[#2a2a4a]">
+                <div className={`w-2 h-2 rounded-full animate-pulse ${
+                  executionPhase === 'pending' ? 'bg-yellow-400' :
+                  executionPhase === 'compiling' ? 'bg-blue-400' :
+                  executionPhase === 'executing' ? 'bg-emerald-400' : 'bg-gray-400'
+                }`} />
+                <div className="flex items-center space-x-3 text-[11px] font-mono">
+                  <span className={executionPhase === 'pending' ? 'text-yellow-400 font-bold' : 'text-[#555]'}>⏳ Pending</span>
+                  <span className="text-[#333]">→</span>
+                  <span className={executionPhase === 'compiling' ? 'text-blue-400 font-bold' : 'text-[#555]'}>🔧 Compiling</span>
+                  <span className="text-[#333]">→</span>
+                  <span className={executionPhase === 'executing' ? 'text-emerald-400 font-bold' : 'text-[#555]'}>⚡ Executing</span>
+                  <span className="text-[#333]">→</span>
+                  <span className="text-[#555]">✅ Done</span>
+                </div>
+              </div>
+            )}
 
             {/* Console Content Box */}
             <div className="flex-1 p-3 overflow-y-auto bg-[#1e1e1e] font-mono text-xs">

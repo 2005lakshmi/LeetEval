@@ -73,7 +73,7 @@ export default function StudentWaitingRoom() {
     };
 
     checkStatus();
-    const interval = setInterval(checkStatus, 2500);
+    const interval = setInterval(checkStatus, 5000);
 
     return () => {
       if (socket) socket.disconnect();

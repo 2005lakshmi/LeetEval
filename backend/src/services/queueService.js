@@ -50,14 +50,30 @@ async function processSubmissionJob(data) {
   activeCountInDirectMode++;
   const { submissionId, language, code, customTemplate, testcases, timeLimitMs, memoryLimitMb, socketId, sessionId } = data;
 
-  if (ioInstance && activeCountInDirectMode > 1) {
-    const queueMsg = `Please wait, you are in queue: ${activeCountInDirectMode - 1} programs to be executed...`;
+  // Helper to emit execution phase updates to the student's socket
+  const emitPhase = (phase, extra = {}) => {
+    if (!ioInstance) return;
+    const payload = { phase, ...extra };
+    if (socketId) ioInstance.to(socketId).emit('execution_phase_update', payload);
+    if (sessionId) ioInstance.to(`session_${sessionId}`).emit('execution_phase_update', payload);
+  };
+
+  if (activeCountInDirectMode > 1) {
+    const queueMsg = `Please wait, you are in queue: ${activeCountInDirectMode - 1} program(s) ahead of you...`;
     const payload = { activeCount: activeCountInDirectMode, queuePosition: activeCountInDirectMode - 1, message: queueMsg };
-    if (socketId) ioInstance.to(socketId).emit('queue_position_update', payload);
-    if (sessionId) ioInstance.to(`session_${sessionId}`).emit('queue_position_update', payload);
+    if (ioInstance) {
+      if (socketId) ioInstance.to(socketId).emit('queue_position_update', payload);
+      if (sessionId) ioInstance.to(`session_${sessionId}`).emit('queue_position_update', payload);
+    }
+    emitPhase('pending', { queuePosition: activeCountInDirectMode - 1 });
+  } else {
+    emitPhase('compiling');
   }
 
   try {
+    // Emit compiling phase right before execution starts
+    emitPhase('compiling');
+    
     const result = await executeCode({
       language,
       code,
@@ -66,6 +82,9 @@ async function processSubmissionJob(data) {
       timeLimitMs,
       memoryLimitMb
     });
+
+    // Emit executing phase (results are being parsed/saved)
+    emitPhase('executing');
 
     // Update submission in DB
     let updatedSubmission = null;
