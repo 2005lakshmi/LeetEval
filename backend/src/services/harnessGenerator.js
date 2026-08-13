@@ -179,6 +179,9 @@ console.log("__RESULTS__" + JSON.stringify(results));
 `;
 
     case 'java': {
+      if (studentCode.includes('public static void main')) {
+        return studentCode;
+      }
       const safeJavaCode = studentCode.replace(/public\s+class\s+Solution/g, 'class Solution');
       return `import java.util.*;
 import java.io.*;
@@ -196,7 +199,10 @@ public class Main {
 `;
     }
 
-    case 'c':
+    case 'c': {
+      if (studentCode.includes('main(') || studentCode.includes('main ()')) {
+        return studentCode;
+      }
       return `#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -211,9 +217,13 @@ int main() {
     return 0;
 }
 `;
+    }
 
     case 'cpp':
-    case 'c++':
+    case 'c++': {
+      if (studentCode.includes('main(') || studentCode.includes('main ()')) {
+        return studentCode;
+      }
       return `#include <iostream>
 #include <string>
 #include <vector>
@@ -230,6 +240,7 @@ int main() {
     return 0;
 }
 `;
+    }
 
     default:
       return studentCode;
