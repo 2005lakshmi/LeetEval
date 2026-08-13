@@ -170,12 +170,14 @@ router.post('/benchmark-simulate', async (req, res) => {
     const executionLogs = [];
 
     // Run benchmark jobs in batches to evaluate throughput and microsecond latency
-    const batchSize = parseInt(process.env.WORKER_CONCURRENCY || '4', 10);
+    const batchSize = parseInt(process.env.WORKER_CONCURRENCY || '2', 10);
+    const io = req.app.get('io');
+
     for (let i = 0; i < requestList.length; i += batchSize) {
       const batch = requestList.slice(i, i + batchSize);
       const batchPromises = batch.map(async (job, bIdx) => {
+        const jobStart = process.hrtime.bigint();
         try {
-          const jobStart = process.hrtime.bigint();
           const res = await judge0ExecuteCode({
             language: job.language,
             code: job.code,
@@ -185,39 +187,54 @@ router.post('/benchmark-simulate', async (req, res) => {
           });
           const jobEnd = process.hrtime.bigint();
           const latencyMs = Number(jobEnd - jobStart) / 1000000;
-          return {
+          const statusVal = (res.verdict === 'Compilation Error' || res.verdict === 'Runtime Error') ? 'Execution Error' : 'Success';
+
+          const item = {
             index: i + bIdx + 1,
             language: job.language,
-            verdict: res.verdict || 'Accepted',
             latencyMs: Number(latencyMs.toFixed(2)),
             rawOutput: res.rawOutput || 'Execution completed with no output.',
-            status: 'Success'
+            status: statusVal
           };
+
+          if (io) {
+            const memUsedMb = Number((process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2));
+            const memTotalMb = Math.round(os.totalmem() / 1024 / 1024);
+            const ramPercentage = Math.min(100, Number(((process.memoryUsage().heapUsed / os.totalmem()) * 100).toFixed(1)));
+            io.emit('benchmark_run_item', item);
+            io.emit('benchmark_telemetry_tick', {
+              completedCount: i + bIdx + 1,
+              totalExecutions: requestList.length,
+              memoryUsedMb: memUsedMb,
+              memoryTotalMb: memTotalMb,
+              ramPercentage: ramPercentage,
+              timestamp: new Date()
+            });
+          }
+
+          return item;
         } catch (err) {
           const jobEnd = process.hrtime.bigint();
           const latencyMs = Number(jobEnd - jobStart) / 1000000;
-          return {
+          const item = {
             index: i + bIdx + 1,
             language: job.language,
-            verdict: 'Error',
             latencyMs: Number(latencyMs.toFixed(2)),
             rawOutput: err.message || 'Execution failed',
-            status: err.message
+            status: 'Execution Error'
           };
+
+          if (io) {
+            io.emit('benchmark_run_item', item);
+          }
+
+          return item;
         }
       });
 
       const batchResults = await Promise.all(batchPromises);
       executionLogs.push(...batchResults);
-
-      const io = req.app.get('io');
-      if (io) {
-        const memUsedMb = Number((process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2));
-        const memTotalMb = Math.round(os.totalmem() / 1024 / 1024);
-        const ramPercentage = Math.min(100, Number(((process.memoryUsage().heapUsed / os.totalmem()) * 100).toFixed(1)));
-
-        io.emit('benchmark_telemetry_tick', {
-          completedCount: executionLogs.length,
+    }
           totalExecutions: requestList.length,
           recentLogs: batchResults,
           ramUsedMb: memUsedMb,

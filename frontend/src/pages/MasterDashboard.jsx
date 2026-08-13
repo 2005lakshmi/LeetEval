@@ -52,16 +52,30 @@ export default function MasterDashboard() {
     cCode: '#include <stdio.h>\nint main() {\n  printf("OK\\n");\n  return 0;\n}',
     pythonCode: 'print("OK")',
     javaCode: 'public class Main {\n  public static void main(String[] args) {\n    System.out.println("OK");\n  }\n}',
-    cppCode: '#include <iostream>\nusing namespace std;\nint main() {\n  cout << "OK" << endl;\n  return 0;\n}',
-    jsCode: 'console.log("OK");'
+    jsCode: 'console.log("OK");',
+    cCmd: 'gcc -o solution.exe solution.c && ./solution.exe',
+    pythonCmd: 'python',
+    javaCmd: 'javac -encoding UTF-8 Main.java && java -Xmx128m Main',
+    cppCmd: 'g++ -o solution.exe solution.cpp && ./solution.exe',
+    jsCmd: 'node'
   });
 
   useEffect(() => {
     fetchMasterData();
-    const interval = setInterval(fetchMasterData, 3000);
+    const socket = io();
 
-    const socket = io(window.location.origin);
-    
+    socket.on('benchmark_run_item', (item) => {
+      const logLine = `[${new Date().toLocaleTimeString()}] ▶ RUN #${item.index} [${item.language.toUpperCase()}] -> Status: ${item.status} | Latency: ${item.latencyMs}ms | Output: "${(item.rawOutput || '').trim().replace(/\n/g, ' ')}"`;
+      setTerminalLogs((prev) => [...prev, logLine]);
+      setBenchResult((prev) => {
+        const currentLogs = prev?.executionLogs || [];
+        return {
+          ...prev,
+          executionLogs: [...currentLogs, item]
+        };
+      });
+    });
+
     socket.on('benchmark_telemetry_tick', (data) => {
       // Live RAM & Process Memory updates
       if (data.ramUsedMb || data.ramPercentage) {
@@ -75,24 +89,6 @@ export default function MasterDashboard() {
           },
           ramPercentage: data.ramPercentage || prev?.ramPercentage
         }));
-      }
-
-      // Live append to floating console log
-      if (Array.isArray(data.recentLogs)) {
-        const newLogs = data.recentLogs.map(
-          (l) => `[${new Date().toLocaleTimeString()}] ▶ RUN #${l.index} [${l.language.toUpperCase()}] -> Verdict: ${l.verdict} | Latency: ${l.latencyMs}ms | Output: "${(l.rawOutput || '').trim().replace(/\n/g, ' ')}"`
-        );
-        setTerminalLogs((prev) => [...prev, ...newLogs]);
-
-        // Live append to benchmark results table
-        setBenchResult((prev) => {
-          const currentLogs = prev?.executionLogs || [];
-          return {
-            ...prev,
-            totalExecutions: data.completedCount,
-            executionLogs: [...currentLogs, ...data.recentLogs]
-          };
-        });
       }
     });
 
@@ -482,11 +478,21 @@ export default function MasterDashboard() {
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C Code Editor:</label>
-                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                <div className="h-36 rounded-lg overflow-hidden border border-slate-200">
                   <CodeEditor
                     value={benchForm.cCode}
                     onChange={(val) => setBenchForm({ ...benchForm, cCode: val })}
                     language="cpp"
+                  />
+                </div>
+                <div className="mt-2 space-y-1 font-mono">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Default Run Command:</label>
+                  <input
+                    type="text"
+                    value={benchForm.cCmd || 'gcc -o solution.exe solution.c && ./solution.exe'}
+                    onChange={(e) => setBenchForm({ ...benchForm, cCmd: e.target.value })}
+                    className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-semibold text-slate-700 focus:bg-white focus:ring-1 focus:ring-[#0E52FF]"
+                    placeholder="gcc -o solution.exe solution.c && ./solution.exe"
                   />
                 </div>
               </div>
@@ -518,11 +524,21 @@ export default function MasterDashboard() {
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Python Code Editor:</label>
-                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                <div className="h-36 rounded-lg overflow-hidden border border-slate-200">
                   <CodeEditor
                     value={benchForm.pythonCode}
                     onChange={(val) => setBenchForm({ ...benchForm, pythonCode: val })}
                     language="python"
+                  />
+                </div>
+                <div className="mt-2 space-y-1 font-mono">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Default Run Command:</label>
+                  <input
+                    type="text"
+                    value={benchForm.pythonCmd || 'python'}
+                    onChange={(e) => setBenchForm({ ...benchForm, pythonCmd: e.target.value })}
+                    className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-semibold text-slate-700 focus:bg-white focus:ring-1 focus:ring-[#0E52FF]"
+                    placeholder="python"
                   />
                 </div>
               </div>
@@ -530,7 +546,10 @@ export default function MasterDashboard() {
               {/* Java Code Card */}
               <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2 relative group shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between font-mono">
-                  <span className="text-xs font-extrabold text-rose-700 uppercase">Java Benchmark</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-extrabold text-rose-700 uppercase">Java Benchmark</span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-50 text-rose-700 border border-rose-200">Java Filename: Main.java</span>
+                  </div>
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
@@ -553,12 +572,22 @@ export default function MasterDashboard() {
                     </div>
                   </div>
                 </div>
-                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Java Code Editor:</label>
-                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">Java Code Editor (Main.java):</label>
+                <div className="h-36 rounded-lg overflow-hidden border border-slate-200">
                   <CodeEditor
                     value={benchForm.javaCode}
                     onChange={(val) => setBenchForm({ ...benchForm, javaCode: val })}
                     language="java"
+                  />
+                </div>
+                <div className="mt-2 space-y-1 font-mono">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Default Run Command:</label>
+                  <input
+                    type="text"
+                    value={benchForm.javaCmd || 'javac -encoding UTF-8 Main.java && java -Xmx128m Main'}
+                    onChange={(e) => setBenchForm({ ...benchForm, javaCmd: e.target.value })}
+                    className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-semibold text-slate-700 focus:bg-white focus:ring-1 focus:ring-[#0E52FF]"
+                    placeholder="javac -encoding UTF-8 Main.java && java -Xmx128m Main"
                   />
                 </div>
               </div>
@@ -590,11 +619,21 @@ export default function MasterDashboard() {
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">C++ Code Editor:</label>
-                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                <div className="h-36 rounded-lg overflow-hidden border border-slate-200">
                   <CodeEditor
                     value={benchForm.cppCode}
                     onChange={(val) => setBenchForm({ ...benchForm, cppCode: val })}
                     language="cpp"
+                  />
+                </div>
+                <div className="mt-2 space-y-1 font-mono">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Default Run Command:</label>
+                  <input
+                    type="text"
+                    value={benchForm.cppCmd || 'g++ -o solution.exe solution.cpp && ./solution.exe'}
+                    onChange={(e) => setBenchForm({ ...benchForm, cppCmd: e.target.value })}
+                    className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-semibold text-slate-700 focus:bg-white focus:ring-1 focus:ring-[#0E52FF]"
+                    placeholder="g++ -o solution.exe solution.cpp && ./solution.exe"
                   />
                 </div>
               </div>
@@ -626,11 +665,21 @@ export default function MasterDashboard() {
                   </div>
                 </div>
                 <label className="block text-[10px] font-mono font-bold text-slate-500 uppercase">JS Code Editor:</label>
-                <div className="h-44 rounded-lg overflow-hidden border border-slate-200">
+                <div className="h-36 rounded-lg overflow-hidden border border-slate-200">
                   <CodeEditor
                     value={benchForm.jsCode}
                     onChange={(val) => setBenchForm({ ...benchForm, jsCode: val })}
                     language="javascript"
+                  />
+                </div>
+                <div className="mt-2 space-y-1 font-mono">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Default Run Command:</label>
+                  <input
+                    type="text"
+                    value={benchForm.jsCmd || 'node'}
+                    onChange={(e) => setBenchForm({ ...benchForm, jsCmd: e.target.value })}
+                    className="w-full p-1.5 bg-slate-50 border border-slate-200 rounded text-xs font-semibold text-slate-700 focus:bg-white focus:ring-1 focus:ring-[#0E52FF]"
+                    placeholder="node"
                   />
                 </div>
               </div>
