@@ -48,19 +48,21 @@ function initQueue(io) {
 
 async function processSubmissionJob(data) {
   activeCountInDirectMode++;
-  const { submissionId, language, code, customTemplate, testcases, timeLimitMs, memoryLimitMb, socketId, sessionId } = data;
+  const { submissionId, language, code, customTemplate, testcases, timeLimitMs, memoryLimitMb, socketId, sessionId, enqueuedAt } = data;
+  const startTimeWorker = Date.now();
+  const queueWaitMs = enqueuedAt ? (startTimeWorker - enqueuedAt) : 0;
 
   // Helper to emit execution phase updates to the student's socket
   const emitPhase = (phase, extra = {}) => {
     if (!ioInstance) return;
-    const payload = { phase, ...extra };
+    const payload = { phase, queueWaitMs, ...extra };
     if (socketId) ioInstance.to(socketId).emit('execution_phase_update', payload);
     if (sessionId) ioInstance.to(`session_${sessionId}`).emit('execution_phase_update', payload);
   };
 
   if (activeCountInDirectMode > 1) {
     const queueMsg = `Please wait, you are in queue: ${activeCountInDirectMode - 1} program(s) ahead of you...`;
-    const payload = { activeCount: activeCountInDirectMode, queuePosition: activeCountInDirectMode - 1, message: queueMsg };
+    const payload = { activeCount: activeCountInDirectMode, queuePosition: activeCountInDirectMode - 1, queueWaitMs, message: queueMsg };
     if (ioInstance) {
       if (socketId) ioInstance.to(socketId).emit('queue_position_update', payload);
       if (sessionId) ioInstance.to(`session_${sessionId}`).emit('queue_position_update', payload);
@@ -110,7 +112,9 @@ async function processSubmissionJob(data) {
         verdict: result.verdict,
         rawOutput: result.rawOutput || '',
         testResults: result.testResults,
-        totalRuntimeMs: result.totalRuntimeMs
+        totalRuntimeMs: result.totalRuntimeMs, // Actual code execution time
+        queueWaitMs: queueWaitMs,              // Time spent in queue waiting
+        totalLatencyMs: queueWaitMs + (result.totalRuntimeMs || 0)
       };
 
       if (socketId) {
@@ -125,22 +129,27 @@ async function processSubmissionJob(data) {
       }
     }
 
-    return result;
+    return {
+      ...result,
+      queueWaitMs,
+      totalLatencyMs: queueWaitMs + (result.totalRuntimeMs || 0)
+    };
   } finally {
     activeCountInDirectMode = Math.max(0, activeCountInDirectMode - 1);
   }
 }
 
 async function addSubmissionToQueue(submissionData) {
+  const payloadWithTimestamp = { ...submissionData, enqueuedAt: submissionData.enqueuedAt || Date.now() };
   if (submissionQueue && redisClient && redisClient.status === 'ready') {
-    const job = await submissionQueue.add('eval_code', submissionData, {
+    const job = await submissionQueue.add('eval_code', payloadWithTimestamp, {
       attempts: 2,
       removeOnComplete: 100
     });
     return { queued: true, jobId: job.id };
   } else {
     // Synchronously execute and return full result when in direct processing mode
-    const result = await processSubmissionJob(submissionData);
+    const result = await processSubmissionJob(payloadWithTimestamp);
     return { queued: false, jobId: 'sync_direct', result };
   }
 }
