@@ -27,7 +27,7 @@ function generateHarness(language, studentCode, testcases, functionName = 'solut
 
   switch (lang) {
     case 'python':
-      return `import time, json, sys, inspect
+      return `import time, json, sys, inspect, io, traceback
 
 # --- STUDENT CODE ---
 ${studentCode}
@@ -35,7 +35,6 @@ ${studentCode}
 
 test_cases = ${formattedTestcases}
 
-# Locate student function dynamically (e.g. solution, fourSum, twoSum, or Solution class)
 target_fn = None
 if 'Solution' in globals():
     try:
@@ -54,8 +53,12 @@ if not target_fn:
 results = []
 for i, tc in enumerate(test_cases):
     start = time.perf_counter()
+    tc_stdout = io.StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = tc_stdout
+    
     try:
-        raw_inp = tc["input"].strip()
+        raw_inp = str(tc.get("input", "")).strip()
         try:
             inp_args = json.loads("[" + raw_inp + "]")
         except Exception:
@@ -69,30 +72,42 @@ for i, tc in enumerate(test_cases):
         else:
             res = "No function found"
 
+        sys.stdout = old_stdout
+        printed_val = tc_stdout.getvalue().strip()
         elapsed_ms = (time.perf_counter() - start) * 1000
         
-        raw_exp = tc["expectedOutput"].strip()
+        raw_exp = str(tc.get("expectedOutput", "")).strip()
         try:
             exp_val = json.loads(raw_exp)
         except Exception:
             exp_val = raw_exp
 
-        passed = (str(res) == str(exp_val)) or (res == exp_val) or (json.dumps(res) == json.dumps(exp_val))
+        # Use return value if provided (not None); otherwise fallback to printed output!
+        final_output = res if res is not None else printed_val
+
+        passed = (str(final_output).strip() == str(exp_val).strip()) or (final_output == exp_val) or (json.dumps(final_output) == json.dumps(exp_val))
+        
         results.append({
             "testIndex": i,
             "passed": passed,
-            "output": json.dumps(res) if isinstance(res, (list, dict)) else str(res),
+            "output": json.dumps(final_output) if isinstance(final_output, (list, dict)) else str(final_output),
             "expected": str(exp_val),
             "error": "",
             "runtimeMs": round(elapsed_ms, 2)
         })
     except Exception as e:
+        sys.stdout = old_stdout
+        printed_val = tc_stdout.getvalue().strip()
+        err_msg = traceback.format_exc().strip()
+        # Keep runtime error concise (last 3 lines of traceback)
+        err_lines = err_msg.split('\\n')
+        concise_err = '\\n'.join(err_lines[-3:]) if len(err_lines) > 3 else err_msg
         results.append({
             "testIndex": i,
             "passed": False,
-            "output": "",
-            "expected": tc["expectedOutput"],
-            "error": str(e),
+            "output": printed_val,
+            "expected": str(tc.get("expectedOutput", "")),
+            "error": concise_err,
             "runtimeMs": 0
         })
 
@@ -124,26 +139,37 @@ const results = testCases.map((tc, i) => {
     let exp;
     try { exp = JSON.parse(tc.expectedOutput); } catch(e) { exp = tc.expectedOutput; }
 
+    let logs = [];
+    const origLog = console.log;
+    console.log = (...a) => {
+        logs.push(a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' '));
+    };
+
     const start = performance.now();
     try {
         let res = fn ? fn(...args) : "No solution function found";
+        console.log = origLog;
         const elapsedMs = performance.now() - start;
-        const passed = String(res) === String(exp) || JSON.stringify(res) === JSON.stringify(exp);
+        const printedVal = logs.join('\n').trim();
+        const finalOutput = (res !== undefined && res !== null) ? res : printedVal;
+
+        const passed = String(finalOutput).trim() === String(exp).trim() || JSON.stringify(finalOutput) === JSON.stringify(exp);
         return {
             testIndex: i,
             passed: passed,
-            output: typeof res === 'object' ? JSON.stringify(res) : String(res),
+            output: typeof finalOutput === 'object' ? JSON.stringify(finalOutput) : String(finalOutput),
             expected: typeof exp === 'object' ? JSON.stringify(exp) : String(exp),
             error: "",
             runtimeMs: Number(elapsedMs.toFixed(2))
         };
     } catch(err) {
+        console.log = origLog;
         return {
             testIndex: i,
             passed: false,
-            output: "",
+            output: logs.join('\n').trim(),
             expected: tc.expectedOutput,
-            error: err.message || String(err),
+            error: `${err.name || 'Error'}: ${err.message || String(err)}`,
             runtimeMs: 0
         };
     }
