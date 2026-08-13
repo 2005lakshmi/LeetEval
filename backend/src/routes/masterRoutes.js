@@ -7,7 +7,7 @@ const { verifyAdminToken, verifyMasterOnly } = require('../middleware/authMiddle
 const { getDBStats } = require('../config/db');
 const { getActiveSocketsCount } = require('../socket/socketHandler');
 const { getQueueMetrics, clearSubmissionQueue, executeCode } = require('../services/queueService');
-const { executeCode: judge0ExecuteCode } = require('../services/judge0Service');
+const { executeCode: judge0ExecuteCode, executeRawBenchmarkCode } = require('../services/judge0Service');
 
 router.use(verifyAdminToken, verifyMasterOnly);
 
@@ -178,12 +178,9 @@ router.post('/benchmark-simulate', async (req, res) => {
       const batchPromises = batch.map(async (job, bIdx) => {
         const jobStart = process.hrtime.bigint();
         try {
-          const res = await judge0ExecuteCode({
+          const res = await executeRawBenchmarkCode({
             language: job.language,
-            code: job.code,
-            testcases: job.testcases,
-            timeLimitMs: 2000,
-            memoryLimitMb: 128
+            code: job.code
           });
           const jobEnd = process.hrtime.bigint();
           const latencyMs = Number(jobEnd - jobStart) / 1000000;

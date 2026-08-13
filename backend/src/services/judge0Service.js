@@ -377,4 +377,128 @@ async function executeCode({ language, code, customTemplate = null, testcases, t
   return await fallbackEvaluate(language, code, testcases, customTemplate);
 }
 
-module.exports = { executeCode };
+/**
+ * Executes RAW un-wrapped user code directly (without adding secondary main() harness)
+ * Used by Benchmark Simulator & Super Admin Panel to test raw language performance!
+ */
+async function executeRawBenchmarkCode({ language, code, customCommand = null }) {
+  const lang = language.toLowerCase();
+  const startTimeTotal = Date.now();
+  const runId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const tmpDir = path.join(os.tmpdir(), `raw_run_${runId}`);
+
+  try {
+    fs.mkdirSync(tmpDir, { recursive: true });
+
+    if (lang === 'python') {
+      const srcPath = path.join(tmpDir, 'main.py');
+      fs.writeFileSync(srcPath, code, 'utf8');
+
+      let pythonCmd = customCommand || 'python';
+      if (!customCommand) {
+        try { execSync('python --version', { stdio: 'ignore' }); } catch (e) { pythonCmd = 'python3'; }
+      }
+
+      const res = await execAsync(pythonCmd, [srcPath], { cwd: tmpDir, timeout: 10000 });
+      const rawOut = (res.stdout || '') + (res.stderr ? `\n${res.stderr}` : '');
+      return {
+        verdict: (res.error || res.status !== 0) ? 'Runtime Error' : 'Success',
+        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        totalRuntimeMs: Date.now() - startTimeTotal
+      };
+    }
+
+    if (lang === 'javascript' || lang === 'js') {
+      const srcPath = path.join(tmpDir, 'main.js');
+      fs.writeFileSync(srcPath, code, 'utf8');
+      const nodeCmd = customCommand || 'node';
+      const res = await execAsync(nodeCmd, [srcPath], { cwd: tmpDir, timeout: 10000 });
+      const rawOut = (res.stdout || '') + (res.stderr ? `\n${res.stderr}` : '');
+      return {
+        verdict: (res.error || res.status !== 0) ? 'Runtime Error' : 'Success',
+        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        totalRuntimeMs: Date.now() - startTimeTotal
+      };
+    }
+
+    if (lang === 'c') {
+      const srcPath = path.join(tmpDir, 'solution.c');
+      const exePath = path.join(tmpDir, 'solution.exe');
+      fs.writeFileSync(srcPath, code, 'utf8');
+
+      const compileRes = await execAsync('gcc', ['-o', exePath, 'solution.c'], { cwd: tmpDir, timeout: 10000 });
+      if (compileRes.error || compileRes.status !== 0) {
+        const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
+        return {
+          verdict: 'Compilation Error',
+          rawOutput: compileErr.trim(),
+          totalRuntimeMs: Date.now() - startTimeTotal
+        };
+      }
+
+      const runRes = await execAsync(exePath, [], { cwd: tmpDir, timeout: 10000 });
+      const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
+      return {
+        verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
+        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        totalRuntimeMs: Date.now() - startTimeTotal
+      };
+    }
+
+    if (lang === 'cpp' || lang === 'c++') {
+      const srcPath = path.join(tmpDir, 'solution.cpp');
+      const exePath = path.join(tmpDir, 'solution.exe');
+      fs.writeFileSync(srcPath, code, 'utf8');
+
+      const compileRes = await execAsync('g++', ['-o', exePath, 'solution.cpp'], { cwd: tmpDir, timeout: 10000 });
+      if (compileRes.error || compileRes.status !== 0) {
+        const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
+        return {
+          verdict: 'Compilation Error',
+          rawOutput: compileErr.trim(),
+          totalRuntimeMs: Date.now() - startTimeTotal
+        };
+      }
+
+      const runRes = await execAsync(exePath, [], { cwd: tmpDir, timeout: 10000 });
+      const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
+      return {
+        verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
+        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        totalRuntimeMs: Date.now() - startTimeTotal
+      };
+    }
+
+    if (lang === 'java') {
+      const mainPath = path.join(tmpDir, 'Main.java');
+      const safeJava = code.includes('public class Main') ? code : code.replace(/public\s+class\s+\w+/, 'public class Main');
+      fs.writeFileSync(mainPath, safeJava, 'utf8');
+
+      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 15000 });
+      if (compileRes.error || compileRes.status !== 0) {
+        const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
+        return {
+          verdict: 'Compilation Error',
+          rawOutput: compileErr.trim(),
+          totalRuntimeMs: Date.now() - startTimeTotal
+        };
+      }
+
+      const runRes = await execAsync('java', ['-Xmx128m', 'Main'], { cwd: tmpDir, timeout: 10000 });
+      const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
+      return {
+        verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
+        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        totalRuntimeMs: Date.now() - startTimeTotal
+      };
+    }
+
+    return { verdict: 'Success', rawOutput: 'Execution finished', totalRuntimeMs: Date.now() - startTimeTotal };
+  } catch (err) {
+    return { verdict: 'Runtime Error', rawOutput: err.message, totalRuntimeMs: Date.now() - startTimeTotal };
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {}
+  }
+}
+
+module.exports = { executeCode, executeRawBenchmarkCode };
