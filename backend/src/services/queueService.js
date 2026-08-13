@@ -139,6 +139,46 @@ async function processSubmissionJob(data) {
   }
 }
 
+let directQueue = [];
+let activeWorkersInDirectMode = 0;
+const MAX_DIRECT_CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '2', 10);
+
+function enqueueDirectJob(data) {
+  return new Promise((resolve, reject) => {
+    directQueue.push({ data, resolve, reject });
+    processNextDirectJob();
+  });
+}
+
+function processNextDirectJob() {
+  if (activeWorkersInDirectMode >= MAX_DIRECT_CONCURRENCY || directQueue.length === 0) {
+    return;
+  }
+
+  const { data, resolve, reject } = directQueue.shift();
+  activeWorkersInDirectMode++;
+
+  // Broadcast live queue position updates to waiting students
+  directQueue.forEach((item, index) => {
+    const queuePos = index + 1;
+    const queueMsg = `Please wait, you are in queue: ${queuePos} program(s) ahead of you...`;
+    const payload = { activeCount: activeWorkersInDirectMode, queuePosition: queuePos, message: queueMsg };
+    if (ioInstance) {
+      if (item.data.socketId) ioInstance.to(item.data.socketId).emit('queue_position_update', payload);
+      if (item.data.sessionId) ioInstance.to(`session_${item.data.sessionId}`).emit('queue_position_update', payload);
+      if (item.data.socketId) ioInstance.to(item.data.socketId).emit('execution_phase_update', { phase: 'pending', queuePosition: queuePos });
+    }
+  });
+
+  processSubmissionJob(data)
+    .then(resolve)
+    .catch(reject)
+    .finally(() => {
+      activeWorkersInDirectMode = Math.max(0, activeWorkersInDirectMode - 1);
+      processNextDirectJob();
+    });
+}
+
 async function addSubmissionToQueue(submissionData) {
   const payloadWithTimestamp = { ...submissionData, enqueuedAt: submissionData.enqueuedAt || Date.now() };
   if (submissionQueue && redisClient && redisClient.status === 'ready') {
@@ -148,8 +188,8 @@ async function addSubmissionToQueue(submissionData) {
     });
     return { queued: true, jobId: job.id };
   } else {
-    // Synchronously execute and return full result when in direct processing mode
-    const result = await processSubmissionJob(payloadWithTimestamp);
+    // Throttled Direct Mode Execution with In-Memory Concurrency Semaphore (max 2 parallel workers to protect 512MB RAM)
+    const result = await enqueueDirectJob(payloadWithTimestamp);
     return { queued: false, jobId: 'sync_direct', result };
   }
 }
@@ -163,11 +203,11 @@ async function getQueueMetrics() {
     return { waiting, active, completed, failed, mode: 'BullMQ Queue Engine' };
   }
   return {
-    waiting: 0,
-    active: activeCountInDirectMode,
+    waiting: directQueue.length,
+    active: activeWorkersInDirectMode,
     completed: 0,
     failed: 0,
-    mode: 'Direct Worker Engine'
+    mode: 'Direct Worker Engine (Semaphore Throttled)'
   };
 }
 
@@ -177,7 +217,8 @@ async function clearSubmissionQueue() {
     await submissionQueue.clean(0, 1000, 'wait');
     await submissionQueue.clean(0, 1000, 'active');
   }
-  activeCountInDirectMode = 0;
+  directQueue = [];
+  activeWorkersInDirectMode = 0;
   if (ioInstance) {
     ioInstance.emit('queue_cleared', { timestamp: new Date(), message: 'All execution processes were terminated. Run again.' });
   }
