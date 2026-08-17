@@ -9,10 +9,27 @@ function generateHarness(language, studentCode, testcases, functionName = 'solut
   // 1. Custom Harness Template saved by Faculty in MongoDB for this question
   if (customTemplate && customTemplate.includes('{{STUDENT_CODE}}')) {
     const codeToInject = (studentCode && studentCode.trim()) ? studentCode : 'pass';
-    return customTemplate
+    let wrapped = customTemplate
       .replace('{{STUDENT_CODE}}', codeToInject)
       .replace('{{TESTCASES_JSON}}', formattedTestcases)
       .replace('{{FUNCTION_NAME}}', functionName);
+
+    const lang = (language || '').toLowerCase();
+    if (lang === 'python') {
+      // Inject dictionary unpacking before target_fn call in custom templates
+      if (wrapped.includes('target_fn(*inp_args)') && !wrapped.includes('isinstance(inp_args[0], dict)')) {
+        wrapped = wrapped.replace(
+          'target_fn(*inp_args)',
+          'if isinstance(inp_args, list) and len(inp_args) == 1 and isinstance(inp_args[0], dict):\n            inp_args = list(inp_args[0].values())\n        res = target_fn(*inp_args)'
+        );
+      }
+      // Replace hardcoded error string with real Python exception string
+      wrapped = wrapped.replace(
+        /"error":\s*"Printed output does not match expected output\."/g,
+        '"error": str(e)'
+      );
+    }
+    return wrapped;
   }
 
   // 2. If studentCode / referenceCode ALREADY contains full evaluator harness (e.g. print("__RESULTS__"))
