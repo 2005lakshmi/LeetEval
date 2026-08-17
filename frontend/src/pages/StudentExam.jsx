@@ -50,8 +50,29 @@ export default function StudentExam() {
 
   const [saveStatus, setSaveStatus] = useState('Saved');
   const [executionPhase, setExecutionPhase] = useState('idle'); // idle | pending | compiling | executing
+  const [selectedCaseIdx, setSelectedCaseIdx] = useState(0);
 
   const [sessionError, setSessionError] = useState(null);
+
+  const formatLeetCodeInput = (inp) => {
+    if (inp === null || inp === undefined) return '';
+    if (typeof inp === 'object' && !Array.isArray(inp)) {
+      return Object.entries(inp)
+        .map(([k, v]) => `${k} =\n${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+        .join('\n');
+    }
+    if (typeof inp === 'string') {
+      try {
+        const parsed = JSON.parse(inp);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          return Object.entries(parsed)
+            .map(([k, v]) => `${k} =\n${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+            .join('\n');
+        }
+      } catch (e) {}
+    }
+    return String(inp);
+  };
 
   // Fetch initial exam session data
   useEffect(() => {
@@ -1091,7 +1112,7 @@ export default function StudentExam() {
               )}
 
               {activeBottomConsole === 'result' && (
-                <div>
+                <div className="font-mono text-xs space-y-3">
                   {(running || submitting) ? (
                     <div className="p-4 rounded-lg bg-[#282828] border border-[#00b8a3]/40 text-center space-y-2 font-mono">
                       <div className="flex items-center justify-center space-x-2 text-[#00b8a3]">
@@ -1108,92 +1129,99 @@ export default function StudentExam() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm font-extrabold ${
-                          verdict === 'Accepted' ? 'text-[#00b8a3]' : 'text-[#FF375F]'
-                        }`}>
-                          {verdict}
-                        </span>
+                      {/* LeetCode Header: Verdict & Runtime */}
+                      <div className="flex items-center justify-between border-b border-[#282828] pb-2">
+                        <div className="flex items-center space-x-3">
+                          <span className={`text-lg font-black tracking-tight ${
+                            verdict === 'Accepted' ? 'text-[#2cbb5d]' : 'text-[#ef4743]'
+                          }`}>
+                            {verdict}
+                          </span>
+                          {totalRuntimeMs !== undefined && totalRuntimeMs > 0 && (
+                            <span className="text-xs text-slate-400 font-semibold">
+                              Runtime: {totalRuntimeMs} ms
+                            </span>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Raw Console Text Output Box */}
-                      {rawOutput && (
-                        <div className="p-3 rounded-md bg-[#141414] border border-[#333333] text-xs text-[#00b8a3] leading-relaxed whitespace-pre-wrap font-mono select-text">
-                          <div className="text-[#8a8a8a] text-[10px] uppercase font-bold mb-1 border-b border-[#282828] pb-1">Raw Execution Output:</div>
-                          {rawOutput}
+                      {/* Case Pills Row */}
+                      {testResults && testResults.length > 0 && (
+                        <div className="flex items-center space-x-2 overflow-x-auto pb-1">
+                          {testResults.map((tr, idx) => {
+                            const isPassed = Boolean(tr.passed);
+                            const isSelected = selectedCaseIdx === idx;
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => setSelectedCaseIdx(idx)}
+                                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all border ${
+                                  isSelected
+                                    ? 'bg-[#ffffff]/10 border-slate-500 text-white shadow-md'
+                                    : 'bg-[#282828] border-[#383838] text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                <span className={isPassed ? 'text-[#2cbb5d]' : 'text-[#ef4743]'}>
+                                  {isPassed ? '✓' : '✕'}
+                                </span>
+                                <span>Case {idx + 1}</span>
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
 
-                      {/* Parsed Testcase Cards */}
-                      {testResults?.map((tr, idx) => {
-                        const indexNum = idx + 1;
-                        const passed = Boolean(tr.passed);
-                        const runtimeVal = tr.runtimeMs !== undefined ? tr.runtimeMs : (tr.runtime !== undefined ? tr.runtime : 0);
-                        const inputVal = tr.input !== undefined && tr.input !== null ? (typeof tr.input === 'object' ? JSON.stringify(tr.input) : String(tr.input)) : '';
-                        const expectedVal = tr.expectedOutput !== undefined ? String(tr.expectedOutput) : (tr.expected !== undefined ? String(tr.expected) : '');
-                        const actualVal = tr.actualOutput !== undefined ? String(tr.actualOutput) : (tr.output !== undefined ? String(tr.output) : '');
-                        const errorMsg = tr.error || tr.stderr || tr.consoleError || (!passed ? `Output Mismatch: Your program returned/printed ${actualVal !== '' ? `"${actualVal.replace(/\n/g, '\\n')}"` : '(no output)'} but expected "${expectedVal.replace(/\n/g, '\\n')}".` : '');
+                      {/* Selected Case Details */}
+                      {testResults && testResults.length > 0 && (() => {
+                        const curCase = testResults[selectedCaseIdx] || testResults[0];
+                        const errText = curCase?.error || curCase?.stderr || curCase?.consoleError;
+                        const inputVal = curCase?.input !== undefined ? curCase.input : '';
+                        const actualVal = curCase?.actualOutput !== undefined ? String(curCase.actualOutput) : (curCase?.output !== undefined ? String(curCase.output) : '');
+                        const expectedVal = curCase?.expectedOutput !== undefined ? String(curCase.expectedOutput) : (curCase?.expected !== undefined ? String(curCase.expected) : '');
 
                         return (
-                          <div key={idx} className={`p-3.5 rounded-xl border space-y-2 font-mono text-xs ${
-                            passed ? 'bg-[#1b2a22] border-[#22543d]' : 'bg-[#2a1b1e] border-[#54222b]'
-                          }`}>
-                            <div className="flex items-center justify-between font-bold border-b border-white/5 pb-2">
-                              <div className="flex items-center space-x-2">
-                                {passed ? (
-                                  <span className="w-5 h-5 rounded-full bg-[#00b8a3]/20 text-[#00b8a3] flex items-center justify-center text-[10px] border border-[#00b8a3]/40 font-extrabold">✓</span>
-                                ) : (
-                                  <span className="w-5 h-5 rounded-full bg-[#FF375F]/20 text-[#FF375F] flex items-center justify-center text-[10px] border border-[#FF375F]/40 font-extrabold">✕</span>
-                                )}
-                                <span className="text-white text-sm font-extrabold">Testcase #{indexNum} Call</span>
-                                <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-bold ${passed ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
-                                  {passed ? 'PASSED' : 'FAILED'}
-                                </span>
-                              </div>
-                              <span className="text-[#8a8a8a] text-xs font-mono font-semibold">Execution Time: {runtimeVal}ms</span>
-                            </div>
-
-                            <div className="pl-7 space-y-2 text-xs">
-                              {/* Console / Runtime Error / Mismatch Display */}
-                              {errorMsg && (
-                                <div className="p-2.5 rounded-lg bg-[#2b1419] border border-[#FF375F]/40 text-[#FF6B8B] font-mono text-xs space-y-1">
-                                  <div className="flex items-center space-x-1.5 text-[#FF375F] font-bold text-[11px] uppercase tracking-wide">
-                                    <span>⚠️ Console / Runtime Error (Testcase #{indexNum} Call):</span>
-                                  </div>
-                                  <pre className="font-mono text-xs whitespace-pre-wrap leading-relaxed select-text font-semibold text-rose-200 bg-black/40 p-2 rounded border border-rose-900/40">
-                                    {errorMsg}
-                                  </pre>
-                                </div>
-                              )}
-
-                              {inputVal && (
-                                <div>
-                                  <div className="text-[11px] font-bold text-slate-400">Input:</div>
-                                  <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-white mt-0.5 select-text">
-                                    {formatOutputStr(inputVal)}
-                                  </pre>
-                                </div>
-                              )}
-
-                              {expectedVal && (
-                                <div>
-                                  <div className="text-[11px] font-bold text-slate-400">Expected Output:</div>
-                                  <pre className="font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2 rounded border border-[#333333] text-[#00b8a3] font-bold mt-0.5 select-text">
-                                    {formatOutputStr(expectedVal)}
-                                  </pre>
-                                </div>
-                              )}
-
-                              <div>
-                                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Your Code's Output:</div>
-                                <pre className={`font-mono text-xs whitespace-pre-wrap bg-[#141414] p-2.5 rounded border border-[#333333] font-bold mt-0.5 select-text ${passed ? 'text-[#00b8a3]' : 'text-[#FF375F]'}`}>
-                                  {actualVal !== undefined && actualVal !== '' ? formatOutputStr(actualVal) : '(No output returned or printed)'}
+                          <div className="space-y-3 pt-1">
+                            {/* LeetCode Red Runtime Error Box */}
+                            {errText && (
+                              <div className="p-3.5 rounded-lg bg-[#2c1d20] border border-[#ef4743]/40 text-[#ff6b6b] font-mono text-xs select-text">
+                                <pre className="whitespace-pre-wrap font-semibold leading-relaxed">
+                                  {errText}
                                 </pre>
                               </div>
+                            )}
+
+                            {/* Input Block */}
+                            {inputVal !== '' && (
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-bold text-slate-400">Input</div>
+                                <div className="bg-[#282828] p-3 rounded-lg border border-[#383838] text-white text-xs font-mono select-text whitespace-pre-wrap">
+                                  {formatLeetCodeInput(inputVal)}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Output Block */}
+                            <div className="space-y-1">
+                              <div className="text-[11px] font-bold text-slate-400">Output</div>
+                              <div className={`p-3 rounded-lg border border-[#383838] bg-[#282828] text-xs font-mono select-text whitespace-pre-wrap font-semibold ${
+                                curCase?.passed ? 'text-white' : 'text-[#ef4743]'
+                              }`}>
+                                {actualVal !== '' ? actualVal : '(No output returned or printed)'}
+                              </div>
                             </div>
+
+                            {/* Expected Block */}
+                            {expectedVal !== '' && (
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-bold text-slate-400">Expected</div>
+                                <div className="bg-[#282828] p-3 rounded-lg border border-[#383838] text-white text-xs font-mono select-text whitespace-pre-wrap font-semibold">
+                                  {expectedVal}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
-                      })}
+                      })()}
                     </div>
                   )}
                 </div>

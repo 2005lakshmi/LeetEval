@@ -9,7 +9,11 @@ function generateHarness(language, studentCode, testcases, functionName = 'solut
   // 1. Custom Harness Template saved by Faculty in MongoDB for this question
   if (customTemplate && customTemplate.includes('{{STUDENT_CODE}}')) {
     const codeToInject = (studentCode && studentCode.trim()) ? studentCode : 'pass';
-    let wrapped = customTemplate
+    let cleanTemplate = customTemplate
+      .replace(/#\s*\{\{STUDENT_CODE\}\}/g, '{{STUDENT_CODE}}')
+      .replace(/\/\/\s*\{\{STUDENT_CODE\}\}/g, '{{STUDENT_CODE}}');
+
+    let wrapped = cleanTemplate
       .replace('{{STUDENT_CODE}}', codeToInject)
       .replace('{{TESTCASES_JSON}}', formattedTestcases)
       .replace('{{FUNCTION_NAME}}', functionName);
