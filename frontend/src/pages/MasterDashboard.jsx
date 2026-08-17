@@ -205,13 +205,10 @@ export default function MasterDashboard() {
       const res = await axios.post('/api/master/benchmark-simulate', benchForm, authHeader);
       setBenchResult(res.data);
 
-      const logs = (res.data.executionLogs || []).map(
-        (l) => `[${new Date().toLocaleTimeString()}] ▶ RUN #${l.index} [${l.language.toUpperCase()}] -> Verdict: ${l.verdict} | Latency: ${l.latencyMs}ms | Output: "${(l.rawOutput || '').trim().replace(/\n/g, ' ')}"`
-      );
       const metrics = res.data.metrics || {};
       const summary = `[${new Date().toLocaleTimeString()}] ✔ BENCHMARK COMPLETE: ${res.data.totalExecutions} jobs. Min: ${metrics.minWaitingMs}ms, Max: ${metrics.maxWaitingMs}ms, Avg: ${metrics.avgWaitingMs}ms, Throughput: ${metrics.throughputPerSec}/sec, RAM Delta: ${metrics.memoryDeltaMb}MB`;
 
-      setTerminalLogs((prev) => [...prev, ...logs, summary]);
+      setTerminalLogs((prev) => [...prev, summary]);
     } catch (err) {
       const errMsg = err.response?.data?.message || err.message || 'Multi-language benchmark failed';
       setTerminalLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ❌ ERROR: ${errMsg}`]);

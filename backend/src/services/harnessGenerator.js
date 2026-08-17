@@ -58,14 +58,33 @@ for i, tc in enumerate(test_cases):
     sys.stdout = tc_stdout
     
     try:
-        raw_inp = str(tc.get("input", "")).strip()
-        try:
-            inp_args = json.loads("[" + raw_inp + "]")
-        except Exception:
+        raw_inp = tc.get("input", "")
+        if isinstance(raw_inp, dict):
+            inp_args = list(raw_inp.values())
+        elif isinstance(raw_inp, str):
+            raw_str = raw_inp.strip()
             try:
-                inp_args = [json.loads(raw_inp)]
+                parsed = json.loads(raw_str)
+                if isinstance(parsed, dict):
+                    inp_args = list(parsed.values())
+                elif isinstance(parsed, list):
+                    inp_args = parsed
+                else:
+                    inp_args = [parsed]
             except Exception:
-                inp_args = [raw_inp]
+                try:
+                    inp_args = json.loads("[" + raw_str + "]")
+                    if len(inp_args) == 1 and isinstance(inp_args[0], dict):
+                        inp_args = list(inp_args[0].values())
+                except Exception:
+                    inp_args = [raw_str]
+        elif isinstance(raw_inp, list):
+            inp_args = raw_inp
+        else:
+            inp_args = [raw_inp]
+
+        if isinstance(inp_args, list) and len(inp_args) == 1 and isinstance(inp_args[0], dict):
+            inp_args = list(inp_args[0].values())
 
         if target_fn:
             res = target_fn(*inp_args)
@@ -179,7 +198,7 @@ console.log("__RESULTS__" + JSON.stringify(results));
 `;
 
     case 'java': {
-      if (studentCode.includes('public static void main')) {
+      if (/public\s+static\s+void\s+main/.test(studentCode) || /main\s*\(/.test(studentCode)) {
         return studentCode;
       }
       const safeJavaCode = studentCode.replace(/public\s+class\s+Solution/g, 'class Solution');
@@ -200,7 +219,7 @@ public class Main {
     }
 
     case 'c': {
-      if (studentCode.includes('main(') || studentCode.includes('main ()')) {
+      if (/main\s*\(/.test(studentCode)) {
         return studentCode;
       }
       return `#include <stdio.h>
@@ -221,7 +240,7 @@ int main() {
 
     case 'cpp':
     case 'c++': {
-      if (studentCode.includes('main(') || studentCode.includes('main ()')) {
+      if (/main\s*\(/.test(studentCode)) {
         return studentCode;
       }
       return `#include <iostream>

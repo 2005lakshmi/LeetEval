@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
-import { foldGutter, foldKeymap, indentOnInput, syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
-import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { indentUnit, foldGutter, foldKeymap, indentOnInput, syntaxHighlighting, defaultHighlightStyle, bracketMatching } from '@codemirror/language';
+import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { oneDark } from '@codemirror/theme-one-dark';
 
 import { python } from '@codemirror/lang-python';
@@ -45,15 +45,18 @@ export default function CodeEditor({ value, onChange, language = 'python', readO
         drawSelection(),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
+        indentUnit.of('    '), // 4 spaces indentation for Python & code blocks
         indentOnInput(),
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         bracketMatching(),
         closeBrackets(),
+        autocompletion(), // Enables live code suggestions & autocomplete popup
         rectangularSelection(),
         crosshairCursor(),
         highlightActiveLine(),
         keymap.of([
           indentWithTab,
+          ...completionKeymap,
           ...closeBracketsKeymap,
           ...defaultKeymap,
           ...historyKeymap,
