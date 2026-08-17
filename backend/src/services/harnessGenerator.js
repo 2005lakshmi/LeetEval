@@ -16,17 +16,69 @@ function generateHarness(language, studentCode, testcases, functionName = 'solut
 
     const lang = (language || '').toLowerCase();
     if (lang === 'python') {
-      // Inject dictionary unpacking before target_fn call in custom templates
-      if (wrapped.includes('target_fn(*inp_args)') && !wrapped.includes('isinstance(inp_args[0], dict)')) {
-        wrapped = wrapped.replace(
-          'target_fn(*inp_args)',
-          'if isinstance(inp_args, list) and len(inp_args) == 1 and isinstance(inp_args[0], dict):\n            inp_args = list(inp_args[0].values())\n        res = target_fn(*inp_args)'
-        );
-      }
-      // Replace hardcoded error string with real Python exception string
+      const unpackHelper = `import io, sys, json, traceback
+
+def _unpack_args(inp):
+    if isinstance(inp, dict):
+        return list(inp.values())
+    if isinstance(inp, str):
+        try:
+            p = json.loads(inp)
+            if isinstance(p, dict):
+                return list(p.values())
+            if isinstance(p, list):
+                return p
+        except Exception:
+            pass
+        return [inp]
+    if isinstance(inp, list):
+        return inp
+    return [inp]
+
+def _call_student_fn(fn, inp):
+    args = _unpack_args(inp)
+    old_out = sys.stdout
+    cap_out = io.StringIO()
+    sys.stdout = cap_out
+    try:
+        res = fn(*args)
+        sys.stdout = old_out
+        p_val = cap_out.getvalue().strip()
+        return res if res is not None else p_val
+    except TypeError:
+        try:
+            res = fn(inp)
+            sys.stdout = old_out
+            p_val = cap_out.getvalue().strip()
+            return res if res is not None else p_val
+        except Exception as e:
+            sys.stdout = old_out
+            raise e
+    except Exception as e:
+        sys.stdout = old_out
+        raise e
+`;
+
+      wrapped = unpackHelper + '\n' + wrapped;
+
+      // Replace function calls inside custom templates to use _call_student_fn wrapper
+      wrapped = wrapped.replace(
+        /(\w+)\.([a-zA-Z_]\w*)\s*\(\s*(tc\[["']input["']\]|inp|inp_args|raw_inp)\s*\)/g,
+        '_call_student_fn($1.$2, $3)'
+      );
+      wrapped = wrapped.replace(
+        /target_fn\s*\(\s*\*?\s*inp_args\s*\)/g,
+        '_call_student_fn(target_fn, inp_args)'
+      );
+      wrapped = wrapped.replace(
+        /solution\s*\(\s*(tc\[["']input["']\]|inp|raw_inp)\s*\)/g,
+        '_call_student_fn(solution, $1)'
+      );
+
+      // Replace hardcoded error string with real exception string
       wrapped = wrapped.replace(
         /"error":\s*"Printed output does not match expected output\."/g,
-        '"error": str(e)'
+        '"error": str(e) if "e" in locals() else "Execution error"'
       );
     }
     return wrapped;
