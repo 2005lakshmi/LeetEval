@@ -23,6 +23,7 @@ export default function StudentExam() {
   const [testResults, setTestResults] = useState(null);
   const [rawOutput, setRawOutput] = useState('');
   const [verdict, setVerdict] = useState(null);
+  const [totalRuntimeMs, setTotalRuntimeMs] = useState(0);
   const [activeLeftTab, setActiveLeftTab] = useState('description');
   const [activeBottomConsole, setActiveBottomConsole] = useState('testcase');
 
@@ -167,6 +168,7 @@ export default function StudentExam() {
       setVerdict(data.verdict);
       setRawOutput(data.rawOutput || '');
       setTestResults(data.testResults);
+      setTotalRuntimeMs(data.totalRuntimeMs || 0);
       setActiveBottomConsole('result');
 
       // Celebration Blast on Accepted!
@@ -437,6 +439,8 @@ export default function StudentExam() {
     setVerdict(null);
     setRawOutput('');
     setTestResults(null);
+    setTotalRuntimeMs(0);
+    setSelectedCaseIdx(0);
     setActiveBottomConsole('testcase');
   };
 
@@ -458,6 +462,8 @@ export default function StudentExam() {
     setVerdict('Running...');
     setRawOutput('');
     setTestResults(null);
+    setTotalRuntimeMs(0);
+    setSelectedCaseIdx(0);
     setActiveBottomConsole('result');
 
     try {
@@ -474,6 +480,7 @@ export default function StudentExam() {
         setVerdict(res.data.verdict);
         setRawOutput(res.data.rawOutput || '');
         setTestResults(res.data.testResults || []);
+        setTotalRuntimeMs(res.data.totalRuntimeMs || 0);
 
         if (res.data.verdict === 'Accepted') {
           confetti({
@@ -502,6 +509,8 @@ export default function StudentExam() {
     setVerdict('Submitting...');
     setRawOutput('');
     setTestResults(null);
+    setTotalRuntimeMs(0);
+    setSelectedCaseIdx(0);
     setActiveBottomConsole('result');
 
     try {
@@ -523,6 +532,7 @@ export default function StudentExam() {
         setVerdict(res.data.verdict);
         setRawOutput(res.data.rawOutput || '');
         setTestResults(res.data.testResults || []);
+        setTotalRuntimeMs(res.data.totalRuntimeMs || 0);
 
         if (res.data.verdict === 'Accepted') {
           confetti({
