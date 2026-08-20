@@ -1186,6 +1186,7 @@ export default function StudentExam() {
                         const curCase = testResults[selectedCaseIdx] || testResults[0];
                         const errText = curCase?.error || curCase?.stderr || curCase?.consoleError;
                         const inputVal = curCase?.input !== undefined ? curCase.input : '';
+                        const stdoutVal = curCase?.stdout !== undefined ? curCase.stdout : (curCase?.printed !== undefined ? curCase.printed : (rawOutput && !rawOutput.includes('__RESULTS__') ? rawOutput : ''));
                         const actualVal = curCase?.actualOutput !== undefined ? String(curCase.actualOutput) : (curCase?.output !== undefined ? String(curCase.output) : '');
                         const expectedVal = curCase?.expectedOutput !== undefined ? String(curCase.expectedOutput) : (curCase?.expected !== undefined ? String(curCase.expected) : '');
 
@@ -1210,13 +1211,23 @@ export default function StudentExam() {
                               </div>
                             )}
 
+                            {/* Stdout / Console Output Block */}
+                            {stdoutVal !== '' && (
+                              <div className="space-y-1">
+                                <div className="text-[11px] font-bold text-slate-400">Stdout</div>
+                                <div className="bg-[#282828] p-3 rounded-lg border border-[#383838] text-emerald-400 text-xs font-mono select-text whitespace-pre-wrap font-semibold">
+                                  {stdoutVal}
+                                </div>
+                              </div>
+                            )}
+
                             {/* Output Block */}
                             <div className="space-y-1">
                               <div className="text-[11px] font-bold text-slate-400">Output</div>
                               <div className={`p-3 rounded-lg border border-[#383838] bg-[#282828] text-xs font-mono select-text whitespace-pre-wrap font-semibold ${
                                 curCase?.passed ? 'text-white' : 'text-[#ef4743]'
                               }`}>
-                                {actualVal !== '' ? actualVal : '(No output returned or printed)'}
+                                {actualVal !== '' ? actualVal : (stdoutVal !== '' ? '""' : '(No output returned or printed)')}
                               </div>
                             </div>
 

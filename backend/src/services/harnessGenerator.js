@@ -179,10 +179,12 @@ for i, tc in enumerate(test_cases):
 
         passed = (str(final_output).strip() == str(exp_val).strip()) or (final_output == exp_val) or (json.dumps(final_output) == json.dumps(exp_val))
         
+        raw_stdout = tc_stdout.getvalue()
         results.append({
             "testIndex": i,
             "passed": passed,
             "output": json.dumps(final_output) if isinstance(final_output, (list, dict)) else str(final_output),
+            "stdout": raw_stdout,
             "expected": str(exp_val),
             "error": "",
             "runtimeMs": round(elapsed_ms, 2)
@@ -190,6 +192,7 @@ for i, tc in enumerate(test_cases):
     except Exception as e:
         sys.stdout = old_stdout
         printed_val = tc_stdout.getvalue().strip()
+        raw_stdout = tc_stdout.getvalue()
         err_msg = traceback.format_exc().strip()
         # Keep runtime error concise (last 3 lines of traceback)
         err_lines = err_msg.split('\\n')
@@ -198,6 +201,7 @@ for i, tc in enumerate(test_cases):
             "testIndex": i,
             "passed": False,
             "output": printed_val,
+            "stdout": raw_stdout,
             "expected": str(tc.get("expectedOutput", "")),
             "error": concise_err,
             "runtimeMs": 0
