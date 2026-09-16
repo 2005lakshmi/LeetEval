@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import confetti from 'canvas-confetti';
-import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { Clock, ShieldAlert, Play, Send, CheckCircle2, XCircle, AlertTriangle, Maximize2, RotateCcw, FileText, Code2, Terminal, ChevronRight, Check, RefreshCw, Lock, Minimize2, GripVertical, GripHorizontal, LogOut, Save, Trophy, Award, Copy, ArrowLeft, Users } from 'lucide-react';
+import { Clock, ShieldAlert, Play, Send, CheckCircle2, XCircle, AlertTriangle, Maximize2, RotateCcw, FileText, Code2, Terminal, ChevronRight, Check, RefreshCw, Lock, Minimize2, GripVertical, GripHorizontal, Save, Trophy, Users, RefreshCcw } from 'lucide-react';
 
 export default function DemoExam() {
   const navigate = useNavigate();
@@ -15,28 +14,13 @@ export default function DemoExam() {
   const [loading, setLoading] = useState(true);
   const [onlineCount, setOnlineCount] = useState(1);
 
-  useEffect(() => {
-    const socket = io();
-    socket.emit('join_demo_room');
-
-    socket.on('demo_online_count', (data) => {
-      if (data?.onlineCount !== undefined) {
-        setOnlineCount(Math.max(1, data.onlineCount));
-      }
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('python');
   const [codeMap, setCodeMap] = useState({}); // questionId -> code
   const [submittedQuestionIds, setSubmittedQuestionIds] = useState([]);
   const [submissionResultsMap, setSubmissionResultsMap] = useState({}); // questionId -> result
 
-  const [timeRemaining, setTimeRemaining] = useState(1800); // 30 mins
+  const [timeRemaining, setTimeRemaining] = useState(1800);
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [testResults, setTestResults] = useState(null);
@@ -51,7 +35,8 @@ export default function DemoExam() {
   // Proctoring State
   const [warningCount, setWarningCount] = useState(0);
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(true);
+  const [warningLimit] = useState(3);
+  const [tabSwitchLimit] = useState(3);
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningMessage, setWarningMessage] = useState('');
   const [showResultsModal, setShowResultsModal] = useState(false);
@@ -68,6 +53,19 @@ export default function DemoExam() {
     const savedName = localStorage.getItem('leeteval_demo_name') || 'Demo Student';
     setStudentName(savedName);
     fetchDemoPaper();
+
+    const socket = io();
+    socket.emit('join_demo_room');
+
+    socket.on('demo_online_count', (data) => {
+      if (data?.onlineCount !== undefined) {
+        setOnlineCount(Math.max(1, data.onlineCount));
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
 
   const fetchDemoPaper = async () => {
@@ -97,7 +95,7 @@ export default function DemoExam() {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          setShowResultsModal(true);
+          handleFinishDemoExam();
           return 0;
         }
         return prev - 1;
@@ -122,16 +120,9 @@ export default function DemoExam() {
       }
     };
 
-    const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-    };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [showResultsModal, loading]);
 
@@ -141,7 +132,7 @@ export default function DemoExam() {
       if (isDraggingHorizontal && containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
         const newWidth = ((e.clientX - rect.left) / rect.width) * 100;
-        if (newWidth >= 20 && newWidth <= 80) setLeftPanelWidth(newWidth);
+        if (newWidth >= 25 && newWidth <= 75) setLeftPanelWidth(newWidth);
       }
 
       if (isDraggingVertical && containerRef.current) {
@@ -167,9 +158,9 @@ export default function DemoExam() {
     };
   }, [isDraggingHorizontal, isDraggingVertical]);
 
-  const currentQuestion = paperData?.questions?.[activeQuestionIndex];
+  const questionsList = Array.isArray(paperData?.questions) ? paperData.questions : [];
+  const currentQuestion = questionsList[activeQuestionIndex];
 
-  // Handle Code Editor Language Change
   const handleLanguageChange = (lang) => {
     setSelectedLanguage(lang);
     if (currentQuestion) {
@@ -186,7 +177,6 @@ export default function DemoExam() {
     setCodeMap((prev) => ({ ...prev, [currentQuestion._id]: newCode }));
   };
 
-  // Run Sample Testcases
   const handleRun = async () => {
     if (!currentQuestion) return;
 
@@ -221,7 +211,6 @@ export default function DemoExam() {
     }
   };
 
-  // Submit Answer
   const handleSubmit = async () => {
     if (!currentQuestion) return;
 
@@ -273,48 +262,13 @@ export default function DemoExam() {
     }
   };
 
-  const formatLeetCodeInput = (inp) => {
-    if (inp === null || inp === undefined) return '';
-    if (typeof inp === 'object' && !Array.isArray(inp)) {
-      return Object.entries(inp)
-        .map(([k, v]) => `${k} =\n${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
-        .join('\n');
-    }
-    if (typeof inp === 'string') {
-      try {
-        const parsed = JSON.parse(inp);
-        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-          return Object.entries(parsed)
-            .map(([k, v]) => `${k} =\n${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
-            .join('\n');
-        }
-      } catch (e) {}
-    }
-    return String(inp);
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#090d16] flex items-center justify-center text-slate-400 font-mono">
-        <RefreshCw className="w-6 h-6 animate-spin mr-2 text-[#0E52FF]" />
-        <span>Loading LeetEval Interactive Demo Exam...</span>
-      </div>
-    );
-  }
-
   // Calculate Overall Demo Score
-  const totalQuestions = paperData?.questions?.length || 0;
+  const totalQuestions = questionsList.length;
   let passedQuestionsCount = 0;
   let totalTestcasesPassed = 0;
   let totalTestcasesCount = 0;
 
-  (paperData?.questions || []).forEach((q) => {
+  questionsList.forEach((q) => {
     const res = submissionResultsMap[String(q._id)];
     if (res && res.verdict === 'Accepted') passedQuestionsCount++;
     if (res && res.testResults) {
@@ -331,7 +285,7 @@ export default function DemoExam() {
     setShowResultsModal(true);
 
     try {
-      const questionSubmissions = (paperData?.questions || []).map((q) => {
+      const questionSubmissions = questionsList.map((q) => {
         const qIdStr = String(q._id);
         const subRes = submissionResultsMap[qIdStr];
         return {
@@ -361,118 +315,170 @@ export default function DemoExam() {
     }
   };
 
+  const formatLeetCodeInput = (inp) => {
+    if (inp === null || inp === undefined) return '';
+    if (typeof inp === 'object' && !Array.isArray(inp)) {
+      return Object.entries(inp)
+        .map(([k, v]) => `${k} =\n${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+        .join('\n');
+    }
+    if (typeof inp === 'string') {
+      try {
+        const parsed = JSON.parse(inp);
+        if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+          return Object.entries(parsed)
+            .map(([k, v]) => `${k} =\n${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+            .join('\n');
+        }
+      } catch (e) {}
+    }
+    return String(inp);
+  };
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#1a1a1a] flex flex-col items-center justify-center space-y-4 text-[#00b8a3] font-mono text-sm">
+        <RefreshCw className="w-8 h-8 animate-spin text-[#00b8a3]" />
+        <span className="font-bold text-white tracking-wider">Loading LeetCode Assessment Interface...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-['Source_Sans_3',sans-serif] select-none relative">
+    <div className="h-screen bg-[#1a1a1a] text-[#eff1f6] flex flex-col overflow-hidden font-sans select-none relative">
       
       {/* Small Bottom-Left Live Online Counter Pill */}
-      <div className="fixed bottom-3 left-3 z-30 flex items-center space-x-2 px-3 py-1 bg-[#141a29]/90 backdrop-blur-md border border-slate-700 rounded-full text-xs font-mono font-bold text-emerald-400 shadow-xl">
+      <div className="fixed bottom-3 left-3 z-30 flex items-center space-x-2 px-3 py-1 bg-[#282828] border border-[#3e3e3e] rounded-full text-xs font-mono font-bold text-emerald-400 shadow-xl">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
         <span>{onlineCount} online</span>
       </div>
 
-      {/* Top Navigation / Header Bar */}
-      <header className="h-14 bg-[#141a29] border-b border-slate-800 flex items-center justify-between px-4 z-20 flex-shrink-0">
-        <div className="flex items-center space-x-3">
+      {/* Top Navbar Header (Identical to StudentExam.jsx) */}
+      <header className="h-12 border-b border-[#333333] bg-[#282828] px-4 flex items-center justify-between flex-shrink-0 z-10">
+        
+        {/* Left Brand & Problem Selector Pills */}
+        <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <span className="text-xl font-bold font-['Playfair_Display',serif] text-white">LeetEval</span>
+            <div className="w-7 h-7 rounded-lg bg-[#FFA116] flex items-center justify-center text-black font-extrabold text-sm">
+              L
+            </div>
+            <span className="font-bold text-white text-sm hidden sm:inline">{paperData?.title}</span>
             <span className="text-xs px-2 py-0.5 rounded font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">DEMO</span>
           </div>
-          <span className="text-slate-600">|</span>
-          <span className="text-sm font-bold text-slate-300 hidden md:inline">{paperData?.title}</span>
+
+          <div className="h-4 w-[1px] bg-[#3e3e3e]" />
+
+          {/* Problem Selector Buttons */}
+          <div className="flex space-x-1.5 overflow-x-auto">
+            {questionsList.map((q, idx) => {
+              const isSubmitted = submittedQuestionIds.includes(String(q._id));
+              const isActive = activeQuestionIndex === idx;
+
+              return (
+                <button
+                  key={q._id || idx}
+                  onClick={() => {
+                    setActiveQuestionIndex(idx);
+                    setVerdict(null);
+                    setRawOutput('');
+                    setTestResults(null);
+                    setTotalRuntimeMs(0);
+                    setSelectedCaseIdx(0);
+                    setActiveBottomConsole('testcase');
+                  }}
+                  className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center space-x-1 transition-all ${
+                    isActive
+                      ? 'bg-[#3e3e3e] text-white shadow-sm border border-[#555555]'
+                      : 'text-[#909090] hover:text-slate-200 hover:bg-[#333333]'
+                  }`}
+                >
+                  <span>Problem {idx + 1}</span>
+                  {isSubmitted && <Check className="w-3 h-3 text-[#00b8a3]" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Center Timer Badge */}
-        <div className="flex items-center space-x-2 bg-[#0d1322] px-3.5 py-1.5 rounded-lg border border-slate-700/80 font-mono">
-          <Clock className="w-4 h-4 text-[#0E52FF] animate-pulse" />
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Demo Time:</span>
-          <span className={`text-sm font-extrabold ${timeRemaining < 300 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
-            {formatTime(timeRemaining)}
-          </span>
-        </div>
-
-        {/* Right Status Actions */}
+        {/* Right Info & Action Controls */}
         <div className="flex items-center space-x-3">
-          <div className="hidden sm:flex items-center space-x-2 bg-slate-800/80 px-2.5 py-1 rounded text-xs font-mono text-slate-300 border border-slate-700">
-            <span>Student:</span>
-            <span className="font-bold text-white">{studentName}</span>
+          {/* Finish Exam Button */}
+          {submittedQuestionIds.length === totalQuestions ? (
+            <button
+              onClick={handleFinishDemoExam}
+              className="px-3.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-lg shadow-emerald-600/30 flex items-center space-x-1.5 transition-all animate-pulse"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Finish & End Assessment ✓</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleFinishDemoExam}
+              className="px-3 py-1.5 rounded-md bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold text-xs transition-all"
+            >
+              <span>Finish Exam</span>
+            </button>
+          )}
+
+          {/* Tab Switch Counter Badge */}
+          <div className="flex items-center space-x-1 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold">
+            <RefreshCw className="w-3 h-3" />
+            <span>Tab Switches: {tabSwitchCount}/{tabSwitchLimit}</span>
           </div>
 
-          <button
-            onClick={handleFinishDemoExam}
-            className="px-3.5 py-1.5 bg-[#0E52FF] hover:bg-[#0642d9] text-white rounded text-xs font-mono font-bold tracking-wider uppercase transition-all shadow-lg flex items-center space-x-1.5"
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            <span>Finish Demo Exam</span>
-          </button>
+          {/* Anti-Cheat Warning Badge */}
+          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>Warnings: {warningCount}/{warningLimit}</span>
+          </div>
+
+          {/* Timer Countdown */}
+          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-md bg-[#333333] border border-[#444444] text-[#FFA116] font-mono font-bold text-xs">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{formatTime(timeRemaining)}</span>
+          </div>
         </div>
       </header>
 
-      {/* Question Navigation Tabs */}
-      <div className="bg-[#0f1626] border-b border-slate-800 px-4 py-2 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center space-x-2 overflow-x-auto">
-          {paperData?.questions?.map((q, idx) => {
-            const qIdStr = String(q._id);
-            const isSubmitted = submittedQuestionIds.includes(qIdStr);
-            const isActive = activeQuestionIndex === idx;
-
-            return (
-              <button
-                key={idx}
-                onClick={() => {
-                  setActiveQuestionIndex(idx);
-                  setVerdict(null);
-                  setRawOutput('');
-                  setTestResults(null);
-                  setTotalRuntimeMs(0);
-                  setSelectedCaseIdx(0);
-                  setActiveBottomConsole('testcase');
-                }}
-                className={`px-3 py-1.5 rounded text-xs font-mono font-bold flex items-center space-x-1.5 transition-all border ${
-                  isActive
-                    ? 'bg-[#0E52FF] text-white border-[#0E52FF] shadow-md'
-                    : isSubmitted
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                    : 'bg-[#182032] text-slate-400 border-slate-700 hover:text-white'
-                }`}
-              >
-                <span>Q{idx + 1}</span>
-                {isSubmitted && <Check className="w-3.5 h-3.5" />}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="text-xs text-slate-400 font-mono hidden sm:block">
-          Questions Submitted: <span className="text-white font-bold">{submittedQuestionIds.length} / {totalQuestions}</span>
-        </div>
-      </div>
-
-      {/* Main Resizable Workspace Container */}
-      <div ref={containerRef} className="flex-1 flex overflow-hidden relative">
+      {/* Main Split-Panel Content (Identical to StudentExam.jsx) */}
+      <div ref={containerRef} className="flex-1 flex overflow-hidden p-2 gap-0 bg-[#1a1a1a] relative">
         
-        {/* Left Pane: Question Description */}
-        <div style={{ width: `${leftPanelWidth}%` }} className="flex flex-col bg-[#0b0f19] border-r border-slate-800 overflow-hidden">
-          <div className="h-10 bg-[#121826] border-b border-slate-800 px-3 flex items-center space-x-3 text-xs font-mono">
+        {/* Left Panel: Problem Statement & Testcases */}
+        <div
+          style={{ width: `${leftPanelWidth}%` }}
+          className="bg-[#282828] rounded-lg border border-[#333333] flex flex-col overflow-hidden min-w-[25%] max-w-[75%]"
+        >
+          {/* Tab Header */}
+          <div className="flex items-center border-b border-[#3e3e3e] bg-[#282828] px-2 pt-1 space-x-1 flex-shrink-0">
             <button
               onClick={() => setActiveLeftTab('description')}
-              className={`px-2.5 py-1 rounded font-bold flex items-center space-x-1 transition-all ${
-                activeLeftTab === 'description' ? 'bg-[#0E52FF] text-white' : 'text-slate-400 hover:text-white'
+              className={`px-3 py-2 text-xs font-semibold flex items-center space-x-1.5 border-b-2 transition-all ${
+                activeLeftTab === 'description'
+                  ? 'border-[#FFA116] text-white bg-[#333333]/50 rounded-t-md'
+                  : 'border-transparent text-[#8a8a8a] hover:text-slate-300'
               }`}
             >
-              <FileText className="w-3.5 h-3.5" />
+              <FileText className="w-3.5 h-3.5 text-[#FFA116]" />
               <span>Description</span>
             </button>
           </div>
 
+          {/* Problem Content View */}
           <div className="flex-1 p-5 overflow-y-auto space-y-4 text-slate-300 text-sm leading-relaxed">
             {currentQuestion && (
               <>
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-white font-mono">{currentQuestion.title}</h2>
-                  <span className={`px-2.5 py-0.5 rounded text-xs font-bold font-mono ${
-                    currentQuestion.difficulty === 'Easy' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                    currentQuestion.difficulty === 'Medium' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                    'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                  <h2 className="text-xl font-bold text-white">{currentQuestion.title}</h2>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    currentQuestion.difficulty === 'Easy' ? 'bg-emerald-500/10 text-[#00b8a3] border border-emerald-500/20' :
+                    currentQuestion.difficulty === 'Medium' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                    'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                   }`}>
                     {currentQuestion.difficulty}
                   </span>
@@ -484,8 +490,8 @@ export default function DemoExam() {
 
                 {currentQuestion.constraints && (
                   <div className="space-y-1.5 pt-2">
-                    <div className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Constraints:</div>
-                    <div className="bg-[#121826] p-3 rounded-lg border border-slate-800 text-xs font-mono text-slate-300 whitespace-pre-wrap">
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">Constraints:</div>
+                    <div className="bg-[#1a1a1a] p-3 rounded-lg border border-[#3e3e3e] text-xs font-mono text-slate-300 whitespace-pre-wrap">
                       {currentQuestion.constraints}
                     </div>
                   </div>
@@ -493,17 +499,17 @@ export default function DemoExam() {
 
                 {currentQuestion.sampleTestcases?.length > 0 && (
                   <div className="space-y-3 pt-2">
-                    <div className="text-xs font-bold text-slate-400 font-mono uppercase tracking-wider">Sample Examples:</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">Examples:</div>
                     {currentQuestion.sampleTestcases.map((tc, idx) => (
-                      <div key={idx} className="p-3 bg-[#121826] rounded-lg border border-slate-800 space-y-2 text-xs font-mono">
-                        <div className="text-[#0E52FF] font-bold">Example {idx + 1}:</div>
+                      <div key={idx} className="p-3 bg-[#1a1a1a] rounded-lg border border-[#3e3e3e] space-y-2 text-xs font-mono">
+                        <div className="text-[#FFA116] font-bold">Example {idx + 1}:</div>
                         <div>
                           <span className="text-slate-400">Input: </span>
                           <span className="text-white font-bold">{tc.input}</span>
                         </div>
                         <div>
                           <span className="text-slate-400">Output: </span>
-                          <span className="text-emerald-400 font-bold">{tc.expectedOutput}</span>
+                          <span className="text-[#00b8a3] font-bold">{tc.expectedOutput}</span>
                         </div>
                       </div>
                     ))}
@@ -514,27 +520,35 @@ export default function DemoExam() {
           </div>
         </div>
 
-        {/* Horizontal Drag Handle */}
+        {/* Resizable Divider (Vertical) */}
         <div
           onMouseDown={() => setIsDraggingHorizontal(true)}
-          className="w-1.5 bg-slate-800 hover:bg-[#0E52FF] cursor-col-resize flex items-center justify-center transition-colors z-10"
+          className="w-2 hover:bg-[#FFA116] cursor-col-resize flex items-center justify-center transition-colors group z-20"
         >
-          <GripVertical className="w-3 h-3 text-slate-600" />
+          <div className="w-1 h-8 rounded-full bg-[#3e3e3e] group-hover:bg-[#FFA116]" />
         </div>
 
-        {/* Right Pane: Code Editor + LeetCode Console Results */}
-        <div style={{ width: `${100 - leftPanelWidth}%` }} className="flex flex-col bg-[#0d121f] overflow-hidden">
-          
+        {/* Right Panel: Code Editor + LeetCode Console Results */}
+        <div
+          style={{ width: `${100 - leftPanelWidth}%` }}
+          className="flex flex-col overflow-hidden min-w-[25%] max-w-[75%]"
+        >
           {/* Editor Header Bar */}
-          <div style={{ height: `${editorPanelHeight}%` }} className="flex flex-col overflow-hidden">
-            <div className="h-10 bg-[#121826] border-b border-slate-800 px-3 flex items-center justify-between text-xs font-mono flex-shrink-0">
-              <div className="flex items-center space-x-2">
-                <Code2 className="w-4 h-4 text-[#0E52FF]" />
-                <span className="font-bold text-slate-300">Code Editor</span>
+          <div
+            style={{ height: `${editorPanelHeight}%` }}
+            className="bg-[#282828] rounded-lg border border-[#333333] flex flex-col overflow-hidden mb-1"
+          >
+            <div className="h-10 border-b border-[#3e3e3e] bg-[#282828] px-3 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-1.5 text-xs text-[#00b8a3] font-bold">
+                  <Code2 className="w-4 h-4" />
+                  <span>Code</span>
+                </div>
+
                 <select
                   value={selectedLanguage}
                   onChange={(e) => handleLanguageChange(e.target.value)}
-                  className="bg-[#1a2336] text-white px-2.5 py-1 rounded border border-slate-700 focus:outline-none text-xs font-mono font-bold"
+                  className="bg-[#1a1a1a] text-white px-3 py-1 rounded-md border border-[#3e3e3e] focus:outline-none focus:border-[#FFA116] text-xs font-mono font-bold"
                 >
                   <option value="python">Python 3</option>
                   <option value="javascript">JavaScript (Node.js)</option>
@@ -548,16 +562,16 @@ export default function DemoExam() {
                 <button
                   onClick={handleRun}
                   disabled={running || submitting}
-                  className="px-3 py-1 bg-[#1e293b] hover:bg-[#334155] text-slate-200 rounded border border-slate-700 flex items-center space-x-1.5 font-bold transition-all disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-md bg-[#282828] hover:bg-[#3e3e3e] border border-[#3e3e3e] text-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition-all disabled:opacity-50"
                 >
-                  <Play className="w-3.5 h-3.5 text-emerald-400" />
+                  <Play className="w-3.5 h-3.5 text-[#00b8a3]" />
                   <span>{running ? 'Running...' : 'Run Code'}</span>
                 </button>
 
                 <button
                   onClick={handleSubmit}
                   disabled={running || submitting}
-                  className="px-3.5 py-1 bg-[#0E52FF] hover:bg-[#0642d9] text-white rounded font-bold flex items-center space-x-1.5 transition-all shadow-md disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-md bg-[#00b8a3] hover:bg-[#009e8c] text-white text-xs font-bold shadow-md shadow-[#00b8a3]/20 flex items-center space-x-1.5 transition-all disabled:opacity-50"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{submitting ? 'Submitting...' : 'Submit'}</span>
@@ -565,8 +579,8 @@ export default function DemoExam() {
               </div>
             </div>
 
-            {/* CodeMirror Editor Area */}
-            <div className="flex-1 overflow-hidden">
+            {/* CodeMirror Code Editor Component */}
+            <div className="flex-1 overflow-hidden bg-[#1a1a1a]">
               <CodeEditor
                 value={codeMap[currentQuestion?._id] || ''}
                 onChange={handleCodeChange}
@@ -575,30 +589,37 @@ export default function DemoExam() {
             </div>
           </div>
 
-          {/* Vertical Drag Handle */}
+          {/* Resizable Divider (Horizontal) */}
           <div
             onMouseDown={() => setIsDraggingVertical(true)}
-            className="h-1.5 bg-slate-800 hover:bg-[#0E52FF] cursor-row-resize flex items-center justify-center transition-colors z-10"
+            className="h-2 hover:bg-[#FFA116] cursor-row-resize flex items-center justify-center transition-colors group z-20"
           >
-            <GripHorizontal className="w-3 h-3 text-slate-600" />
+            <div className="h-1 w-8 rounded-full bg-[#3e3e3e] group-hover:bg-[#FFA116]" />
           </div>
 
-          {/* Bottom Console / Test Results */}
-          <div style={{ height: `${100 - editorPanelHeight}%` }} className="flex flex-col bg-[#111625] overflow-hidden">
-            <div className="h-9 bg-[#161d2e] border-b border-slate-800 px-3 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center space-x-2 text-xs font-mono">
+          {/* Bottom Console / LeetCode Results Box */}
+          <div
+            style={{ height: `${100 - editorPanelHeight}%` }}
+            className="bg-[#282828] rounded-lg border border-[#333333] flex flex-col overflow-hidden"
+          >
+            <div className="h-9 border-b border-[#3e3e3e] bg-[#282828] px-3 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center space-x-2 text-xs font-semibold">
                 <button
                   onClick={() => setActiveBottomConsole('testcase')}
-                  className={`px-2.5 py-1 rounded font-bold ${
-                    activeBottomConsole === 'testcase' ? 'bg-[#1e293b] text-white' : 'text-slate-400'
+                  className={`px-3 py-1 rounded-t-md transition-all ${
+                    activeBottomConsole === 'testcase'
+                      ? 'border-b-2 border-[#FFA116] text-white bg-[#333333]/50'
+                      : 'text-[#8a8a8a] hover:text-slate-300'
                   }`}
                 >
                   Testcase Suite
                 </button>
                 <button
                   onClick={() => setActiveBottomConsole('result')}
-                  className={`px-2.5 py-1 rounded font-bold ${
-                    activeBottomConsole === 'result' ? 'bg-[#1e293b] text-white' : 'text-slate-400'
+                  className={`px-3 py-1 rounded-t-md transition-all ${
+                    activeBottomConsole === 'result'
+                      ? 'border-b-2 border-[#FFA116] text-white bg-[#333333]/50'
+                      : 'text-[#8a8a8a] hover:text-slate-300'
                   }`}
                 >
                   Test Result
@@ -607,21 +628,21 @@ export default function DemoExam() {
             </div>
 
             {/* Console Content Box */}
-            <div className="flex-1 p-3 overflow-y-auto bg-[#0e1320] font-mono text-xs">
+            <div className="flex-1 p-3 overflow-y-auto bg-[#1a1a1a] font-mono text-xs">
               {activeBottomConsole === 'testcase' && (
                 <div className="space-y-3">
                   {currentQuestion?.sampleTestcases?.map((tc, idx) => (
-                    <div key={idx} className="p-3 bg-[#171e2e] rounded-lg border border-slate-800 space-y-2">
-                      <div className="text-[#0E52FF] font-bold">Sample Case {idx + 1}</div>
+                    <div key={idx} className="p-3 bg-[#282828] rounded-lg border border-[#383838] space-y-2">
+                      <div className="text-[#FFA116] font-bold">Sample Case {idx + 1}</div>
                       <div className="space-y-1">
-                        <div className="text-[11px] text-slate-400">Input</div>
-                        <div className="bg-[#0b0f19] p-2.5 rounded border border-slate-800 text-white select-text">
+                        <div className="text-[11px] text-[#8a8a8a]">Input</div>
+                        <div className="bg-[#1a1a1a] p-2.5 rounded border border-[#383838] text-white select-text">
                           {tc.input}
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <div className="text-[11px] text-slate-400">Expected Output</div>
-                        <div className="bg-[#0b0f19] p-2.5 rounded border border-slate-800 text-emerald-400 font-bold select-text">
+                        <div className="text-[11px] text-[#8a8a8a]">Expected Output</div>
+                        <div className="bg-[#1a1a1a] p-2.5 rounded border border-[#383838] text-[#00b8a3] font-bold select-text">
                           {tc.expectedOutput}
                         </div>
                       </div>
@@ -633,20 +654,20 @@ export default function DemoExam() {
               {activeBottomConsole === 'result' && (
                 <div className="font-mono text-xs space-y-3">
                   {(running || submitting) ? (
-                    <div className="p-4 rounded-lg bg-[#171e2e] border border-[#0E52FF]/40 text-center space-y-2 font-mono">
-                      <div className="flex items-center justify-center space-x-2 text-[#0E52FF]">
+                    <div className="p-4 rounded-lg bg-[#282828] border border-[#FFA116]/40 text-center space-y-2 font-mono">
+                      <div className="flex items-center justify-center space-x-2 text-[#FFA116]">
                         <RefreshCw className="w-5 h-5 animate-spin" />
                         <span className="font-bold text-sm">Evaluating demo code against testcases...</span>
                       </div>
                     </div>
                   ) : !verdict ? (
-                    <div className="text-slate-400 text-xs pt-4 text-center">
+                    <div className="text-[#8a8a8a] text-xs pt-4 text-center">
                       Click <strong>Run Code</strong> or <strong>Submit</strong> to evaluate your solution.
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {/* LeetCode Header: Verdict & Runtime */}
-                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center justify-between border-b border-[#383838] pb-2">
                         <div className="flex items-center space-x-3">
                           <span className={`text-lg font-black tracking-tight ${
                             verdict === 'Accepted' ? 'text-[#2cbb5d]' : 'text-[#ef4743]'
@@ -654,7 +675,7 @@ export default function DemoExam() {
                             {verdict}
                           </span>
                           {totalRuntimeMs > 0 && (
-                            <span className="text-xs text-slate-400 font-semibold">
+                            <span className="text-xs text-[#8a8a8a] font-semibold">
                               Runtime: {totalRuntimeMs} ms
                             </span>
                           )}
@@ -674,7 +695,7 @@ export default function DemoExam() {
                                 className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all border ${
                                   isSelected
                                     ? 'bg-white/10 border-slate-500 text-white shadow-md'
-                                    : 'bg-[#182032] border-slate-800 text-slate-400 hover:text-white'
+                                    : 'bg-[#282828] border-[#383838] text-slate-400 hover:text-white'
                                 }`}
                               >
                                 <span className={isPassed ? 'text-[#2cbb5d]' : 'text-[#ef4743]'}>
@@ -709,7 +730,7 @@ export default function DemoExam() {
                             {inputVal !== '' && (
                               <div className="space-y-1">
                                 <div className="text-[11px] font-bold text-slate-400">Input</div>
-                                <div className="bg-[#182032] p-3 rounded-lg border border-slate-800 text-white text-xs font-mono select-text whitespace-pre-wrap">
+                                <div className="bg-[#282828] p-3 rounded-lg border border-[#383838] text-white text-xs font-mono select-text whitespace-pre-wrap">
                                   {formatLeetCodeInput(inputVal)}
                                 </div>
                               </div>
@@ -718,7 +739,7 @@ export default function DemoExam() {
                             {stdoutVal !== '' && (
                               <div className="space-y-1">
                                 <div className="text-[11px] font-bold text-slate-400">Stdout</div>
-                                <div className="bg-[#182032] p-3 rounded-lg border border-slate-800 text-emerald-400 text-xs font-mono select-text whitespace-pre-wrap font-semibold">
+                                <div className="bg-[#282828] p-3 rounded-lg border border-[#383838] text-[#00b8a3] text-xs font-mono select-text whitespace-pre-wrap font-semibold">
                                   {stdoutVal}
                                 </div>
                               </div>
@@ -726,7 +747,7 @@ export default function DemoExam() {
 
                             <div className="space-y-1">
                               <div className="text-[11px] font-bold text-slate-400">Output</div>
-                              <div className={`p-3 rounded-lg border border-slate-800 bg-[#182032] text-xs font-mono select-text whitespace-pre-wrap font-semibold ${
+                              <div className={`p-3 rounded-lg border border-[#383838] bg-[#282828] text-xs font-mono select-text whitespace-pre-wrap font-semibold ${
                                 curCase?.passed ? 'text-white' : 'text-[#ef4743]'
                               }`}>
                                 {actualVal !== '' ? actualVal : (stdoutVal !== '' ? '""' : '(No output returned or printed)')}
@@ -736,7 +757,7 @@ export default function DemoExam() {
                             {expectedVal !== '' && (
                               <div className="space-y-1">
                                 <div className="text-[11px] font-bold text-slate-400">Expected</div>
-                                <div className="bg-[#182032] p-3 rounded-lg border border-slate-800 text-white text-xs font-mono select-text whitespace-pre-wrap font-semibold">
+                                <div className="bg-[#282828] p-3 rounded-lg border border-[#383838] text-white text-xs font-mono select-text whitespace-pre-wrap font-semibold">
                                   {expectedVal}
                                 </div>
                               </div>
@@ -756,11 +777,11 @@ export default function DemoExam() {
       {/* Proctoring Anti-Cheat Warning Modal */}
       {showWarningModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#161d2e] border border-rose-500/40 rounded-xl p-6 max-w-md w-full space-y-4 shadow-2xl text-center">
+          <div className="bg-[#282828] border border-rose-500/40 rounded-xl p-6 max-w-md w-full space-y-4 shadow-2xl text-center text-white font-sans">
             <div className="w-12 h-12 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto">
               <ShieldAlert className="w-6 h-6 animate-pulse" />
             </div>
-            <h3 className="text-lg font-bold text-white font-mono">Anti-Cheat Alert (Demo Simulation)</h3>
+            <h3 className="text-lg font-bold font-mono">Anti-Cheat Alert (Demo Simulation)</h3>
             <p className="text-xs text-slate-300 leading-relaxed font-mono">
               {warningMessage}
             </p>
@@ -777,12 +798,12 @@ export default function DemoExam() {
       {/* COMPREHENSIVE DEMO RESULTS SUMMARY MODAL */}
       {showResultsModal && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#121826] border border-slate-700 rounded-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 shadow-2xl text-slate-100 font-mono my-8">
+          <div className="bg-[#282828] border border-[#3e3e3e] rounded-2xl max-w-3xl w-full p-6 sm:p-8 space-y-6 shadow-2xl text-slate-100 font-sans my-8">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center justify-between border-b border-[#3e3e3e] pb-4">
               <div className="flex items-center space-x-3">
-                <div className="p-3 rounded-xl bg-[#0E52FF]/20 text-[#0E52FF] border border-[#0E52FF]/40">
+                <div className="p-3 rounded-xl bg-[#FFA116]/20 text-[#FFA116] border border-[#FFA116]/40">
                   <Trophy className="w-7 h-7" />
                 </div>
                 <div>
@@ -795,60 +816,60 @@ export default function DemoExam() {
                 </div>
               </div>
 
-              <div className="px-3 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold uppercase">
+              <div className="px-3 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold uppercase font-mono">
                 Demo Completed
               </div>
             </div>
 
             {/* Scorecard Overview Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-[#182032] border border-slate-800 space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono">
+              <div className="p-4 rounded-xl bg-[#1a1a1a] border border-[#383838] space-y-1">
                 <div className="text-xs text-slate-400 uppercase font-bold">Overall Score</div>
-                <div className="text-3xl font-black text-[#0E52FF]">{overallScorePercentage}%</div>
+                <div className="text-3xl font-black text-[#FFA116]">{overallScorePercentage}%</div>
                 <div className="text-[11px] text-slate-400">Passed {passedQuestionsCount} of {totalQuestions} Problems</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#182032] border border-slate-800 space-y-1">
+              <div className="p-4 rounded-xl bg-[#1a1a1a] border border-[#383838] space-y-1">
                 <div className="text-xs text-slate-400 uppercase font-bold">Testcase Pass Rate</div>
-                <div className="text-3xl font-black text-emerald-400">
+                <div className="text-3xl font-black text-[#00b8a3]">
                   {totalTestcasesPassed} / {totalTestcasesCount}
                 </div>
-                <div className="text-[11px] text-slate-400">Individual Testcases Evaluated</div>
+                <div className="text-[11px] text-slate-400 font-sans">Individual Testcases Evaluated</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#182032] border border-slate-800 space-y-1">
+              <div className="p-4 rounded-xl bg-[#1a1a1a] border border-[#383838] space-y-1">
                 <div className="text-xs text-slate-400 uppercase font-bold">Proctoring Record</div>
-                <div className={`text-3xl font-black ${tabSwitchCount === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                <div className={`text-3xl font-black ${tabSwitchCount === 0 ? 'text-[#00b8a3]' : 'text-amber-400'}`}>
                   {tabSwitchCount} Alerts
                 </div>
-                <div className="text-[11px] text-slate-400">Tab Switches & Focus Loss Detected</div>
+                <div className="text-[11px] text-slate-400 font-sans">Tab Switches & Focus Loss</div>
               </div>
             </div>
 
             {/* Problem-wise Code & Testcases Detailed Submissions Breakdown */}
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-2 border-b border-slate-800 pb-2">
-                <Code2 className="w-4 h-4 text-[#0E52FF]" />
+              <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-2 border-b border-[#3e3e3e] pb-2 font-mono">
+                <Code2 className="w-4 h-4 text-[#FFA116]" />
                 <span>Problem-wise Code Submissions & Testcase Results:</span>
               </h3>
 
-              <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
-                {paperData?.questions?.map((q, qIdx) => {
+              <div className="space-y-4 max-h-80 overflow-y-auto pr-2 font-mono">
+                {questionsList.map((q, qIdx) => {
                   const qIdStr = String(q._id);
                   const subResult = submissionResultsMap[qIdStr];
                   const codeWritten = codeMap[qIdStr] || q.boilerplate?.python || 'No code written';
                   const isAccepted = subResult?.verdict === 'Accepted';
 
                   return (
-                    <div key={qIdx} className="p-4 rounded-xl bg-[#182032] border border-slate-800 space-y-3">
-                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div key={qIdx} className="p-4 rounded-xl bg-[#1a1a1a] border border-[#383838] space-y-3">
+                      <div className="flex items-center justify-between border-b border-[#383838] pb-2">
                         <div className="flex items-center space-x-2">
                           <span className="font-bold text-white text-sm">{q.title}</span>
                           <span className="text-xs text-slate-400">({q.difficulty})</span>
                         </div>
                         <span className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase ${
                           isAccepted
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            ? 'bg-emerald-500/20 text-[#00b8a3] border border-emerald-500/30'
                             : subResult
                             ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                             : 'bg-slate-700/50 text-slate-400 border border-slate-600'
@@ -860,7 +881,7 @@ export default function DemoExam() {
                       {/* Submitted Code Block */}
                       <div className="space-y-1">
                         <div className="text-[11px] font-bold text-slate-400">Submitted Code ({subResult?.language || selectedLanguage}):</div>
-                        <pre className="p-3 bg-[#0b0f19] rounded-lg border border-slate-800 text-xs text-slate-200 whitespace-pre-wrap select-text max-h-36 overflow-y-auto">
+                        <pre className="p-3 bg-[#282828] rounded-lg border border-[#383838] text-xs text-slate-200 whitespace-pre-wrap select-text max-h-36 overflow-y-auto">
                           {codeWritten}
                         </pre>
                       </div>
@@ -872,7 +893,7 @@ export default function DemoExam() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                             {subResult.testResults.map((tr, tIdx) => (
                               <div key={tIdx} className={`p-2 rounded border flex items-center justify-between ${
-                                tr.passed ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-300' : 'bg-rose-950/30 border-rose-800/40 text-rose-300'
+                                tr.passed ? 'bg-emerald-950/30 border-emerald-800/40 text-[#00b8a3]' : 'bg-rose-950/30 border-rose-800/40 text-rose-300'
                               }`}>
                                 <span>Testcase #{tIdx + 1} ({tr.runtimeMs || 0}ms)</span>
                                 <span className="font-bold">{tr.passed ? 'PASSED ✓' : 'FAILED ✕'}</span>
@@ -888,7 +909,7 @@ export default function DemoExam() {
             </div>
 
             {/* Modal Bottom Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-800 pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#3e3e3e] pt-4 font-mono">
               <button
                 onClick={() => {
                   setShowResultsModal(false);
@@ -897,7 +918,7 @@ export default function DemoExam() {
                   setTimeRemaining((paperData?.timeLimitMinutes || 30) * 60);
                   setActiveQuestionIndex(0);
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2 border border-slate-700 transition-all"
+                className="w-full sm:w-auto px-4 py-2.5 bg-[#333333] hover:bg-[#3e3e3e] text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2 border border-[#444444] transition-all"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>Retake Demo Exam</span>
@@ -906,7 +927,7 @@ export default function DemoExam() {
               <div className="flex items-center space-x-3 w-full sm:w-auto">
                 <button
                   onClick={() => navigate('/student/join')}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-[#0E52FF] hover:bg-[#0642d9] text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-lg"
+                  className="w-full sm:w-auto px-5 py-2.5 bg-[#00b8a3] hover:bg-[#009e8c] text-white rounded-lg font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-lg shadow-[#00b8a3]/20"
                 >
                   <span>Join Live Exam Portal</span>
                   <ChevronRight className="w-4 h-4" />

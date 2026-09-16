@@ -1013,21 +1013,39 @@ export default function MasterDashboard() {
 
         {/* Active Demo Exam Paper Configuration Card */}
         <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-3 gap-3">
             <div className="flex items-center space-x-2">
               <Sparkles className="w-5 h-5 text-[#0E52FF]" />
               <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">
-                Public Demo Room Paper Configuration (/demo)
+                Allocate Question Paper for Public Demo (/demo)
               </h2>
             </div>
-            <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full uppercase">
+            <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full uppercase self-start sm:self-auto">
               Live Demo Active
             </span>
           </div>
 
           <p className="text-xs text-slate-600 font-medium">
-            Select which Question Paper is served to visitors when they enter the public demo room at <strong className="font-mono text-[#0E52FF]">/demo</strong>.
+            Select any existing question paper created in the platform to serve to students visiting <strong className="font-mono text-[#0E52FF]">/demo</strong>.
           </p>
+
+          {/* Quick Select Dropdown */}
+          <div className="flex items-center space-x-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+            <span className="text-xs font-mono font-bold text-slate-700 uppercase">Select Paper:</span>
+            <select
+              value={demoConfig.activeDemoPaperId || ''}
+              onChange={(e) => handleSetDemoPaper(e.target.value || null)}
+              disabled={demoUpdating}
+              className="flex-1 p-2 bg-white border border-[#E5E0D8] rounded-lg text-xs font-mono font-bold text-[#111111] focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+            >
+              <option value="">Default Built-in Demo Paper (Reverse Integer & Print Rectangle)</option>
+              {demoConfig.papers?.map((p) => (
+                <option key={p._id} value={p._id}>
+                  {p.title} ({p.questionIds?.length || 0} Questions | {p.timeLimitMinutes || 30} Mins)
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             <div
@@ -1038,7 +1056,9 @@ export default function MasterDashboard() {
                   : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
               }`}
             >
-              <div className="text-xs font-mono font-bold uppercase mb-1">Default Built-in Demo Paper</div>
+              <div className="text-xs font-mono font-bold uppercase mb-1">
+                {!demoConfig.activeDemoPaperId ? '✓ Currently Active' : 'Default Paper'}
+              </div>
               <div className="text-sm font-bold">Reverse Integer & Print Rectangle</div>
               <div className="text-[11px] font-mono mt-2 text-slate-500">2 Sample Problems | 30 Mins</div>
             </div>
@@ -1056,7 +1076,7 @@ export default function MasterDashboard() {
                   }`}
                 >
                   <div className="text-xs font-mono font-bold uppercase mb-1">
-                    {isActive ? '✓ Active Demo Paper' : 'Select Paper'}
+                    {isActive ? '✓ Currently Active' : 'Click to Allocate'}
                   </div>
                   <div className="text-sm font-bold truncate">{p.title}</div>
                   <div className="text-[11px] font-mono mt-2 text-slate-500">
