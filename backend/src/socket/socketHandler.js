@@ -171,6 +171,16 @@ function setupSocketHandlers(io) {
       }
     });
 
+    // Demo Room Live Visitors Tracking
+    socket.on('join_demo_room', () => {
+      socket.join('demo_room');
+      activeSockets.set(socket.id, { role: 'demo_user' });
+      
+      const demoSockets = io.sockets.adapter.rooms.get('demo_room');
+      const count = demoSockets ? demoSockets.size : 1;
+      io.to('demo_room').emit('demo_online_count', { onlineCount: count });
+    });
+
     socket.on('disconnect', () => {
       const socketInfo = activeSockets.get(socket.id);
       if (socketInfo && socketInfo.role === 'student' && socketInfo.roomId) {
@@ -180,6 +190,12 @@ function setupSocketHandlers(io) {
         });
       }
       activeSockets.delete(socket.id);
+
+      setTimeout(() => {
+        const demoSockets = io.sockets.adapter.rooms.get('demo_room');
+        const count = demoSockets ? demoSockets.size : 0;
+        io.to('demo_room').emit('demo_online_count', { onlineCount: count });
+      }, 500);
     });
   });
 }

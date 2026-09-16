@@ -1,12 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import { GradFlow } from 'gradflow';
-import { ArrowRight, Sparkles, Play, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Sparkles, Play, ShieldCheck, Users } from 'lucide-react';
 
 export default function DemoJoin() {
   const navigate = useNavigate();
   const [name, setName] = useState(localStorage.getItem('leeteval_demo_name') || '');
   const [error, setError] = useState('');
+  const [onlineCount, setOnlineCount] = useState(1);
+
+  useEffect(() => {
+    const socket = io();
+    socket.emit('join_demo_room');
+
+    socket.on('demo_online_count', (data) => {
+      if (data?.onlineCount !== undefined) {
+        setOnlineCount(Math.max(1, data.onlineCount));
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -39,6 +56,12 @@ export default function DemoJoin() {
 
       {/* Ambient Shading Overlay */}
       <div className="fixed inset-0 bg-gradient-to-t from-[#111111]/40 via-transparent to-[#111111]/30 pointer-events-none z-0" />
+
+      {/* Small Bottom-Left Live Online Counter Pill */}
+      <div className="fixed bottom-4 left-4 z-30 flex items-center space-x-2 px-3 py-1.5 bg-black/60 backdrop-blur-md border border-white/20 rounded-full text-xs font-mono font-bold text-emerald-400 shadow-lg">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span>{onlineCount} online</span>
+      </div>
 
       <div className="w-full max-w-md relative z-10 my-8">
         

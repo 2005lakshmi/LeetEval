@@ -534,4 +534,45 @@ router.post('/demo/submit', async (req, res) => {
   }
 });
 
+// Save Final Demo Exam Results to MongoDB
+const DemoResult = require('../models/DemoResult');
+
+router.post('/demo/submit-exam', async (req, res) => {
+  try {
+    const {
+      name,
+      paperTitle,
+      overallScore,
+      passedQuestionsCount,
+      totalQuestionsCount,
+      totalTestcasesPassed,
+      totalTestcasesCount,
+      tabSwitchCount,
+      timeTakenSeconds,
+      questionSubmissions
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'Student name is required' });
+    }
+
+    const savedResult = await DemoResult.create({
+      name,
+      paperTitle: paperTitle || 'Demo Exam',
+      overallScore: Number(overallScore) || 0,
+      passedQuestionsCount: Number(passedQuestionsCount) || 0,
+      totalQuestionsCount: Number(totalQuestionsCount) || 0,
+      totalTestcasesPassed: Number(totalTestcasesPassed) || 0,
+      totalTestcasesCount: Number(totalTestcasesCount) || 0,
+      tabSwitchCount: Number(tabSwitchCount) || 0,
+      timeTakenSeconds: Number(timeTakenSeconds) || 0,
+      questionSubmissions: questionSubmissions || []
+    });
+
+    res.json({ message: 'Demo exam result saved to database', result: savedResult });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

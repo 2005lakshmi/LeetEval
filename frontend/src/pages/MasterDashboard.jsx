@@ -62,6 +62,8 @@ export default function MasterDashboard() {
 
   const [demoConfig, setDemoConfig] = useState({ activeDemoPaperId: null, papers: [] });
   const [demoUpdating, setDemoUpdating] = useState(false);
+  const [demoResults, setDemoResults] = useState([]);
+  const [selectedDemoResultModal, setSelectedDemoResultModal] = useState(null);
 
   useEffect(() => {
     fetchMasterData();
@@ -159,6 +161,14 @@ export default function MasterDashboard() {
     }
   };
 
+  const fetchDemoResults = async () => {
+    try {
+      const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
+      const res = await axios.get('/api/master/demo-results', authHeader);
+      setDemoResults(res.data.results || []);
+    } catch (e) {}
+  };
+
   const fetchMasterData = async () => {
     try {
       const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
@@ -172,6 +182,7 @@ export default function MasterDashboard() {
       setHealth(hRes.data);
       setAuditLogs(aRes.data.logs || []);
       fetchDemoConfig();
+      fetchDemoResults();
     } catch (err) {
       console.error('Error fetching master data:', err);
     } finally {
@@ -1057,6 +1068,74 @@ export default function MasterDashboard() {
           </div>
         </div>
 
+        {/* Stored Demo Exam Results & Submissions Analytics Table */}
+        <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111] flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-600" />
+              <span>Public Demo Exam Submissions & Student Results ({demoResults.length})</span>
+            </h2>
+            <button
+              onClick={fetchDemoResults}
+              className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded text-xs font-mono font-bold flex items-center space-x-1"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refresh Results</span>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto max-h-80 rounded-lg border border-slate-200 shadow-sm">
+            <table className="w-full text-left text-xs text-[#111111]">
+              <thead className="bg-[#FAF8F5] text-[#111111] uppercase font-mono font-extrabold border-b border-slate-200">
+                <tr>
+                  <th className="p-3">Student Name</th>
+                  <th className="p-3">Paper Title</th>
+                  <th className="p-3">Score %</th>
+                  <th className="p-3">Testcases Passed</th>
+                  <th className="p-3">Tab Switches</th>
+                  <th className="p-3">Timestamp</th>
+                  <th className="p-3">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white font-medium">
+                {demoResults.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="p-4 text-center text-slate-500 font-mono text-xs">
+                      No public demo exam submissions recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  demoResults.map((res) => (
+                    <tr key={res._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3 font-bold text-[#111111]">{res.name}</td>
+                      <td className="p-3 font-mono text-slate-700 truncate max-w-xs">{res.paperTitle}</td>
+                      <td className="p-3 font-mono font-extrabold text-[#0E52FF]">{res.overallScore}%</td>
+                      <td className="p-3 font-mono text-emerald-700 font-bold">{res.totalTestcasesPassed} / {res.totalTestcasesCount}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded font-mono font-bold text-xs ${
+                          res.tabSwitchCount === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {res.tabSwitchCount} Alerts
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono text-slate-500 text-[11px]">{new Date(res.createdAt).toLocaleString()}</td>
+                      <td className="p-3">
+                        <button
+                          onClick={() => setSelectedDemoResultModal(res)}
+                          className="px-3 py-1 bg-[#0E52FF]/10 text-[#0E52FF] hover:bg-[#0E52FF]/20 border border-[#0E52FF]/30 rounded text-xs font-mono font-bold flex items-center space-x-1"
+                        >
+                          <Code2 className="w-3.5 h-3.5" />
+                          <span>View Code</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Registered Credentials & User Management Table */}
         <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">
           <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111] flex items-center gap-2">
@@ -1210,6 +1289,49 @@ export default function MasterDashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Master Inspector Modal for Student Demo Code Submissions */}
+        {selectedDemoResultModal && (
+          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white p-6 rounded-xl max-w-2xl w-full border border-slate-200 shadow-2xl space-y-4 text-[#111111] max-h-[85vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div>
+                  <h3 className="text-xl font-bold font-['Playfair_Display',serif]">
+                    Demo Code Submission Details
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    Student: <strong>{selectedDemoResultModal.name}</strong> | Score: <strong className="text-[#0E52FF]">{selectedDemoResultModal.overallScore}%</strong>
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedDemoResultModal(null)}
+                  className="px-3 py-1 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded font-mono font-bold text-xs uppercase"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {selectedDemoResultModal.questionSubmissions?.map((qs, idx) => (
+                  <div key={idx} className="p-4 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-mono font-bold">
+                      <span className="text-[#111111]">{qs.questionTitle || `Question ${idx + 1}`}</span>
+                      <span className={`px-2 py-0.5 rounded text-[11px] uppercase ${
+                        qs.verdict === 'Accepted' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                      }`}>
+                        {qs.verdict}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-500">Language: {qs.language}</div>
+                    <pre className="p-3 bg-[#0b0f19] text-slate-200 rounded text-xs font-mono whitespace-pre-wrap max-h-40 overflow-y-auto select-text">
+                      {qs.code}
+                    </pre>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

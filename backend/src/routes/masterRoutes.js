@@ -406,4 +406,16 @@ router.post('/demo-paper', async (req, res) => {
   }
 });
 
+// Fetch All Demo Exam Results for Master Dashboard
+const DemoResult = require('../models/DemoResult');
+
+router.get('/demo-results', async (req, res) => {
+  try {
+    const results = await DemoResult.find().sort({ createdAt: -1 }).limit(100);
+    res.json({ results });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

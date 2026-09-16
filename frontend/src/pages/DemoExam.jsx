@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { io } from 'socket.io-client';
 import confetti from 'canvas-confetti';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { Clock, ShieldAlert, Play, Send, CheckCircle2, XCircle, AlertTriangle, Maximize2, RotateCcw, FileText, Code2, Terminal, ChevronRight, Check, RefreshCw, Lock, Minimize2, GripVertical, GripHorizontal, LogOut, Save, Trophy, Award, Copy, ArrowLeft } from 'lucide-react';
+import { Clock, ShieldAlert, Play, Send, CheckCircle2, XCircle, AlertTriangle, Maximize2, RotateCcw, FileText, Code2, Terminal, ChevronRight, Check, RefreshCw, Lock, Minimize2, GripVertical, GripHorizontal, LogOut, Save, Trophy, Award, Copy, ArrowLeft, Users } from 'lucide-react';
 
 export default function DemoExam() {
   const navigate = useNavigate();
@@ -12,6 +13,22 @@ export default function DemoExam() {
   const [studentName, setStudentName] = useState('');
   const [paperData, setPaperData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [onlineCount, setOnlineCount] = useState(1);
+
+  useEffect(() => {
+    const socket = io();
+    socket.emit('join_demo_room');
+
+    socket.on('demo_online_count', (data) => {
+      if (data?.onlineCount !== undefined) {
+        setOnlineCount(Math.max(1, data.onlineCount));
+      }
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   const [activeQuestionIndex, setActiveQuestionIndex] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('python');
@@ -310,9 +327,49 @@ export default function DemoExam() {
 
   const overallScorePercentage = totalTestcasesCount > 0 ? Math.round((totalTestcasesPassed / totalTestcasesCount) * 100) : 0;
 
+  const handleFinishDemoExam = async () => {
+    setShowResultsModal(true);
+
+    try {
+      const questionSubmissions = (paperData?.questions || []).map((q) => {
+        const qIdStr = String(q._id);
+        const subRes = submissionResultsMap[qIdStr];
+        return {
+          questionId: qIdStr,
+          questionTitle: q.title,
+          code: codeMap[qIdStr] || q.boilerplate?.python || '',
+          language: subRes?.language || selectedLanguage,
+          verdict: subRes?.verdict || 'Not Submitted',
+          testResults: subRes?.testResults || []
+        };
+      });
+
+      await axios.post('/api/student/demo/submit-exam', {
+        name: studentName,
+        paperTitle: paperData?.title || 'Demo Exam',
+        overallScore: overallScorePercentage,
+        passedQuestionsCount,
+        totalQuestionsCount: totalQuestions,
+        totalTestcasesPassed,
+        totalTestcasesCount,
+        tabSwitchCount,
+        timeTakenSeconds: ((paperData?.timeLimitMinutes || 30) * 60) - timeRemaining,
+        questionSubmissions
+      });
+    } catch (e) {
+      console.error('[Demo Result Save Error]:', e);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-['Source_Sans_3',sans-serif] select-none">
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-['Source_Sans_3',sans-serif] select-none relative">
       
+      {/* Small Bottom-Left Live Online Counter Pill */}
+      <div className="fixed bottom-3 left-3 z-30 flex items-center space-x-2 px-3 py-1 bg-[#141a29]/90 backdrop-blur-md border border-slate-700 rounded-full text-xs font-mono font-bold text-emerald-400 shadow-xl">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <span>{onlineCount} online</span>
+      </div>
+
       {/* Top Navigation / Header Bar */}
       <header className="h-14 bg-[#141a29] border-b border-slate-800 flex items-center justify-between px-4 z-20 flex-shrink-0">
         <div className="flex items-center space-x-3">
@@ -341,7 +398,7 @@ export default function DemoExam() {
           </div>
 
           <button
-            onClick={() => setShowResultsModal(true)}
+            onClick={handleFinishDemoExam}
             className="px-3.5 py-1.5 bg-[#0E52FF] hover:bg-[#0642d9] text-white rounded text-xs font-mono font-bold tracking-wider uppercase transition-all shadow-lg flex items-center space-x-1.5"
           >
             <Trophy className="w-3.5 h-3.5" />
