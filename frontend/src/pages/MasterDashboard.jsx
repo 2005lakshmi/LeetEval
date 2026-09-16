@@ -3,7 +3,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X, Copy, GripHorizontal } from 'lucide-react';
+import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, Code2, Trophy, PieChart, Maximize2, Minimize2, Terminal, Eye, X, Copy, GripHorizontal } from 'lucide-react';
 
 export default function MasterDashboard() {
   const [users, setUsers] = useState([]);
