@@ -7,6 +7,7 @@ import StudentJoin from './pages/StudentJoin';
 import StudentWaitingRoom from './pages/StudentWaitingRoom';
 import StudentExam from './pages/StudentExam';
 import DemoJoin from './pages/DemoJoin';
+import DemoWaitingRoom from './pages/DemoWaitingRoom';
 import DemoExam from './pages/DemoExam';
 
 import AdminLogin from './pages/AdminLogin';
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/" element={<StudentJoin />} />
         <Route path="/student/join" element={<StudentJoin />} />
         <Route path="/demo" element={<DemoJoin />} />
+        <Route path="/demo/waiting" element={<DemoWaitingRoom />} />
         <Route path="/demo/exam" element={<DemoExam />} />
         <Route path="/student/waiting/:sessionId" element={<StudentWaitingRoom />} />
         <Route path="/student/exam/:sessionId" element={<StudentExam />} />

@@ -34,7 +34,7 @@ export default function DemoJoin() {
     }
 
     localStorage.setItem('leeteval_demo_name', name.trim());
-    navigate('/demo/exam');
+    navigate('/demo/waiting');
   };
 
   return (
