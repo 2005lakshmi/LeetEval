@@ -60,6 +60,9 @@ export default function MasterDashboard() {
     jsCmd: 'node'
   });
 
+  const [demoConfig, setDemoConfig] = useState({ activeDemoPaperId: null, papers: [] });
+  const [demoUpdating, setDemoUpdating] = useState(false);
+
   useEffect(() => {
     fetchMasterData();
     const socket = io();
@@ -135,6 +138,27 @@ export default function MasterDashboard() {
     };
   };
 
+  const fetchDemoConfig = async () => {
+    try {
+      const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
+      const res = await axios.get('/api/master/demo-paper', authHeader);
+      setDemoConfig(res.data);
+    } catch (e) {}
+  };
+
+  const handleSetDemoPaper = async (paperId) => {
+    try {
+      setDemoUpdating(true);
+      const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
+      await axios.post('/api/master/demo-paper', { paperId }, authHeader);
+      await fetchDemoConfig();
+    } catch (e) {
+      alert('Failed to update demo paper configuration');
+    } finally {
+      setDemoUpdating(false);
+    }
+  };
+
   const fetchMasterData = async () => {
     try {
       const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
@@ -147,6 +171,7 @@ export default function MasterDashboard() {
       setUsers(uRes.data.users || []);
       setHealth(hRes.data);
       setAuditLogs(aRes.data.logs || []);
+      fetchDemoConfig();
     } catch (err) {
       console.error('Error fetching master data:', err);
     } finally {
@@ -974,6 +999,63 @@ export default function MasterDashboard() {
             )}
           </div>
         )}
+
+        {/* Active Demo Exam Paper Configuration Card */}
+        <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-5 h-5 text-[#0E52FF]" />
+              <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">
+                Public Demo Room Paper Configuration (/demo)
+              </h2>
+            </div>
+            <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full uppercase">
+              Live Demo Active
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-600 font-medium">
+            Select which Question Paper is served to visitors when they enter the public demo room at <strong className="font-mono text-[#0E52FF]">/demo</strong>.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div
+              onClick={() => handleSetDemoPaper(null)}
+              className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                !demoConfig.activeDemoPaperId
+                  ? 'bg-[#0E52FF]/10 border-[#0E52FF] text-[#0E52FF] shadow-sm font-bold'
+                  : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+              }`}
+            >
+              <div className="text-xs font-mono font-bold uppercase mb-1">Default Built-in Demo Paper</div>
+              <div className="text-sm font-bold">Reverse Integer & Print Rectangle</div>
+              <div className="text-[11px] font-mono mt-2 text-slate-500">2 Sample Problems | 30 Mins</div>
+            </div>
+
+            {demoConfig.papers?.map((p) => {
+              const isActive = demoConfig.activeDemoPaperId === p._id;
+              return (
+                <div
+                  key={p._id}
+                  onClick={() => handleSetDemoPaper(p._id)}
+                  className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                    isActive
+                      ? 'bg-[#0E52FF]/10 border-[#0E52FF] text-[#0E52FF] shadow-sm font-bold'
+                      : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                  }`}
+                >
+                  <div className="text-xs font-mono font-bold uppercase mb-1">
+                    {isActive ? '✓ Active Demo Paper' : 'Select Paper'}
+                  </div>
+                  <div className="text-sm font-bold truncate">{p.title}</div>
+                  <div className="text-[11px] font-mono mt-2 text-slate-500">
+                    {p.questionIds?.length || 0} Questions | {p.timeLimitMinutes || 30} Mins
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Registered Credentials & User Management Table */}
         <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-4">

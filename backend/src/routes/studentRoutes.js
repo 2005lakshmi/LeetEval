@@ -461,4 +461,77 @@ router.post('/submit', async (req, res) => {
   }
 });
 
+// Demo Exam Endpoints (No authentication required)
+const { getDemoPaperData } = require('../services/demoService');
+const { executeCode: judge0ExecuteCode } = require('../services/judge0Service');
+
+// Fetch Demo Paper data
+router.get('/demo/paper', async (req, res) => {
+  try {
+    const demoPaper = await getDemoPaperData();
+    res.json(demoPaper);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Run Demo Code (sample testcases)
+router.post('/demo/run', async (req, res) => {
+  try {
+    const { language, code, testcases } = req.body;
+    if (!language || !code || !testcases) {
+      return res.status(400).json({ message: 'Language, code, and testcases are required' });
+    }
+
+    const result = await judge0ExecuteCode({
+      language,
+      code,
+      testcases,
+      timeLimitMs: 3000,
+      memoryLimitMb: 256
+    });
+
+    res.json({
+      verdict: result.verdict || 'Accepted',
+      rawOutput: result.rawOutput || '',
+      testResults: result.testResults || [],
+      totalRuntimeMs: result.totalRuntimeMs || 0
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Submit Demo Code (evaluate testcases)
+router.post('/demo/submit', async (req, res) => {
+  try {
+    const { language, code, sampleTestcases = [], hiddenTestcases = [] } = req.body;
+    if (!language || !code) {
+      return res.status(400).json({ message: 'Language and code are required' });
+    }
+
+    const testcasesToEvaluate = [
+      ...sampleTestcases,
+      ...hiddenTestcases
+    ];
+
+    const result = await judge0ExecuteCode({
+      language,
+      code,
+      testcases: testcasesToEvaluate.length > 0 ? testcasesToEvaluate : sampleTestcases,
+      timeLimitMs: 3000,
+      memoryLimitMb: 256
+    });
+
+    res.json({
+      verdict: result.verdict || 'Accepted',
+      rawOutput: result.rawOutput || '',
+      testResults: result.testResults || [],
+      totalRuntimeMs: result.totalRuntimeMs || 0
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

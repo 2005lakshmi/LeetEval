@@ -6,6 +6,8 @@ import Navbar from './components/Navbar';
 import StudentJoin from './pages/StudentJoin';
 import StudentWaitingRoom from './pages/StudentWaitingRoom';
 import StudentExam from './pages/StudentExam';
+import DemoJoin from './pages/DemoJoin';
+import DemoExam from './pages/DemoExam';
 
 import AdminLogin from './pages/AdminLogin';
 import AdminRegister from './pages/AdminRegister';
@@ -61,6 +63,8 @@ export default function App() {
         {/* Student Entry Routes */}
         <Route path="/" element={<StudentJoin />} />
         <Route path="/student/join" element={<StudentJoin />} />
+        <Route path="/demo" element={<DemoJoin />} />
+        <Route path="/demo/exam" element={<DemoExam />} />
         <Route path="/student/waiting/:sessionId" element={<StudentWaitingRoom />} />
         <Route path="/student/exam/:sessionId" element={<StudentExam />} />
 

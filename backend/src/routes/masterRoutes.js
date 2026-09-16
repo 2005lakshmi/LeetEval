@@ -373,4 +373,37 @@ router.post('/simulate-load', async (req, res) => {
   }
 });
 
+// Master Demo Paper Management
+const Paper = require('../models/Paper');
+const { setActiveDemoPaperId, getActiveDemoPaperId } = require('../services/demoService');
+
+router.get('/demo-paper', async (req, res) => {
+  try {
+    const papers = await Paper.find().select('title timeLimitMinutes questionIds allowedLanguages createdAt').sort({ createdAt: -1 });
+    const activeDemoPaperId = getActiveDemoPaperId();
+    res.json({ activeDemoPaperId, papers });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post('/demo-paper', async (req, res) => {
+  try {
+    const { paperId } = req.body;
+    setActiveDemoPaperId(paperId || null);
+    
+    await AuditLog.create({
+      actorId: req.user._id,
+      actorType: 'master',
+      action: 'SET_DEMO_PAPER',
+      targetId: String(paperId || 'DEFAULT'),
+      meta: { paperId }
+    });
+
+    res.json({ message: 'Active demo paper updated successfully', activeDemoPaperId: getActiveDemoPaperId() });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
