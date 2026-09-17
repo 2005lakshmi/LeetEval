@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { GradFlow } from 'gradflow';
-import { ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function StudentJoin() {
   const navigate = useNavigate();
@@ -78,10 +78,6 @@ export default function StudentJoin() {
         
         {/* Header Section */}
         <div className="text-center mb-8 space-y-3">
-          <div className="inline-flex p-3 rounded-xl bg-white/90 border border-white text-[#0E52FF] shadow-2xl shadow-[#0E52FF]/30 backdrop-blur-md">
-            <Sparkles className="w-8 h-8 text-[#0E52FF] animate-pulse" />
-          </div>
-          
           <h1 className="font-['Playfair_Display',serif] text-4xl sm:text-5xl font-extrabold tracking-tight text-[#FFFFFF] drop-shadow-xl">
             Join Exam Portal
           </h1>

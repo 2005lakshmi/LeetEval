@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowRight, Sparkles, ShieldCheck, AlertCircle } from 'lucide-react';
+import { ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import FramerLiquidBackground from '../components/FramerLiquidBackground';
 
 export default function DemoJoin() {
@@ -59,18 +59,6 @@ export default function DemoJoin() {
   return (
     <div className="min-h-screen bg-[#111111] text-[#FFFFFF] font-['Source_Sans_3',sans-serif] flex items-center justify-center p-4 relative overflow-hidden select-none">
       
-      {/* Inline Styles for Shimmer Text Animation */}
-      <style>{`
-        @keyframes shimmerText {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-        .animate-shimmer-text {
-          background-size: 200% auto;
-          animation: shimmerText 3.5s linear infinite;
-        }
-      `}</style>
-
       {/* Framer Animated Liquid Background Component */}
       <FramerLiquidBackground />
 
@@ -78,12 +66,7 @@ export default function DemoJoin() {
         
         {/* Header Section */}
         <div className="text-center mb-8 space-y-3">
-          <div className="inline-flex p-3 rounded-xl bg-white/90 border border-white text-[#0E52FF] shadow-2xl shadow-[#0E52FF]/30 backdrop-blur-md">
-            <Sparkles className="w-8 h-8 text-[#0E52FF] animate-pulse" />
-          </div>
-          
-          {/* Framer TextShimmer Heading for LeetEval */}
-          <h1 className="font-['Playfair_Display',serif] text-5xl sm:text-6xl font-extrabold tracking-tight drop-shadow-2xl text-transparent bg-clip-text bg-gradient-to-r from-white via-[#82DCFF] to-white animate-shimmer-text">
+          <h1 className="font-['Playfair_Display',serif] text-5xl sm:text-6xl font-extrabold tracking-tight text-[#FFFFFF] drop-shadow-xl">
             LeetEval
           </h1>
         </div>
