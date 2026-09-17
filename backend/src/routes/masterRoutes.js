@@ -243,16 +243,6 @@ router.post('/benchmark-simulate', async (req, res) => {
       const batchResults = await Promise.all(batchPromises);
       executionLogs.push(...batchResults);
     }
-          totalExecutions: requestList.length,
-          recentLogs: batchResults,
-          ramUsedMb: memUsedMb,
-          ramTotalMb: memTotalMb,
-          ramPercentage,
-          v8HeapUsedMb: memUsedMb,
-          v8HeapTotalMb: Number((process.memoryUsage().heapTotal / 1024 / 1024).toFixed(2))
-        });
-      }
-    }
 
     const overallEnd = process.hrtime.bigint();
     const totalBenchmarkMs = Number(overallEnd - overallStart) / 1000000;
