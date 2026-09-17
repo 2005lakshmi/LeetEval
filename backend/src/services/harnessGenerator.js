@@ -25,19 +25,68 @@ function generateHarness(language, studentCode, testcases, functionName = 'solut
 def _unpack_args(inp):
     if isinstance(inp, dict):
         return list(inp.values())
-    if isinstance(inp, str):
-        try:
-            p = json.loads(inp)
-            if isinstance(p, dict):
-                return list(p.values())
-            if isinstance(p, list):
-                return p
-        except Exception:
-            pass
-        return [inp]
     if isinstance(inp, list):
         return inp
-    return [inp]
+    if not isinstance(inp, str):
+        return [inp]
+
+    raw_str = inp.strip()
+    if not raw_str:
+        return []
+
+    try:
+        p = json.loads(raw_str)
+        if isinstance(p, dict):
+            return list(p.values())
+        if isinstance(p, list):
+            return p
+        if not isinstance(p, str):
+            return [p]
+    except Exception:
+        pass
+
+    try:
+        p = json.loads("[" + raw_str + "]")
+        if isinstance(p, list):
+            if len(p) == 1 and isinstance(p[0], dict):
+                return list(p[0].values())
+            return p
+    except Exception:
+        pass
+
+    lines = [l.strip() for l in raw_str.splitlines() if l.strip()]
+    vals = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if '=' in line:
+            parts = line.split('=', 1)
+            val_part = parts[1].strip()
+            if val_part:
+                vals.append(val_part)
+            elif i + 1 < len(lines):
+                i += 1
+                vals.append(lines[i].strip())
+        else:
+            vals.append(line)
+        i += 1
+
+    if vals:
+        parsed_vals = []
+        for v in vals:
+            try:
+                parsed_vals.append(json.loads(v))
+            except Exception:
+                if v.isdigit() or (v.startswith('-') and v[1:].isdigit()):
+                    parsed_vals.append(int(v))
+                else:
+                    try:
+                        parsed_vals.append(float(v))
+                    except Exception:
+                        parsed_vals.append(v)
+        return parsed_vals
+
+    return [raw_str]
 
 def _call_student_fn(fn, inp):
     args = _unpack_args(inp)
@@ -123,6 +172,72 @@ if not target_fn:
         if inspect.isfunction(obj) and not name.startswith('_'):
             target_fn = obj
 
+def _unpack_args(inp):
+    if isinstance(inp, dict):
+        return list(inp.values())
+    if isinstance(inp, list):
+        return inp
+    if not isinstance(inp, str):
+        return [inp]
+
+    raw_str = inp.strip()
+    if not raw_str:
+        return []
+
+    try:
+        p = json.loads(raw_str)
+        if isinstance(p, dict):
+            return list(p.values())
+        if isinstance(p, list):
+            return p
+        if not isinstance(p, str):
+            return [p]
+    except Exception:
+        pass
+
+    try:
+        p = json.loads("[" + raw_str + "]")
+        if isinstance(p, list):
+            if len(p) == 1 and isinstance(p[0], dict):
+                return list(p[0].values())
+            return p
+    except Exception:
+        pass
+
+    lines = [l.strip() for l in raw_str.splitlines() if l.strip()]
+    vals = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if '=' in line:
+            parts = line.split('=', 1)
+            val_part = parts[1].strip()
+            if val_part:
+                vals.append(val_part)
+            elif i + 1 < len(lines):
+                i += 1
+                vals.append(lines[i].strip())
+        else:
+            vals.append(line)
+        i += 1
+
+    if vals:
+        parsed_vals = []
+        for v in vals:
+            try:
+                parsed_vals.append(json.loads(v))
+            except Exception:
+                if v.isdigit() or (v.startswith('-') and v[1:].isdigit()):
+                    parsed_vals.append(int(v))
+                else:
+                    try:
+                        parsed_vals.append(float(v))
+                    except Exception:
+                        parsed_vals.append(v)
+        return parsed_vals
+
+    return [raw_str]
+
 results = []
 for i, tc in enumerate(test_cases):
     start = time.perf_counter()
@@ -132,32 +247,7 @@ for i, tc in enumerate(test_cases):
     
     try:
         raw_inp = tc.get("input", "")
-        if isinstance(raw_inp, dict):
-            inp_args = list(raw_inp.values())
-        elif isinstance(raw_inp, str):
-            raw_str = raw_inp.strip()
-            try:
-                parsed = json.loads(raw_str)
-                if isinstance(parsed, dict):
-                    inp_args = list(parsed.values())
-                elif isinstance(parsed, list):
-                    inp_args = parsed
-                else:
-                    inp_args = [parsed]
-            except Exception:
-                try:
-                    inp_args = json.loads("[" + raw_str + "]")
-                    if len(inp_args) == 1 and isinstance(inp_args[0], dict):
-                        inp_args = list(inp_args[0].values())
-                except Exception:
-                    inp_args = [raw_str]
-        elif isinstance(raw_inp, list):
-            inp_args = raw_inp
-        else:
-            inp_args = [raw_inp]
-
-        if isinstance(inp_args, list) and len(inp_args) == 1 and isinstance(inp_args[0], dict):
-            inp_args = list(inp_args[0].values())
+        inp_args = _unpack_args(raw_inp)
 
         if target_fn:
             res = target_fn(*inp_args)
