@@ -152,7 +152,7 @@ export default function MasterDashboard() {
         axios.get('/api/master/health', authHeader),
         axios.get('/api/master/audit-logs', authHeader),
         axios.get('/api/master/demo-rooms', authHeader).catch(() => ({ data: { demoRooms: [] } })),
-        axios.get('/api/paper', authHeader).catch(() => ({ data: { papers: [] } }))
+        axios.get('/api/papers', authHeader).catch(() => ({ data: { papers: [] } }))
       ]);
 
       setUsers(uRes.data.users || []);
