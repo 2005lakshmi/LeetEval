@@ -30,33 +30,33 @@ export default function FramerLiquidBackground() {
       <div className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
         <FramerComponent
           preset="custom"
-          color1="#090d16"
-          color2="#0E52FF"
-          color3="#82DCFF"
-          speed={35}
+          color1="#0E52FF"
+          color2="#82DCFF"
+          color3="#FFFFFF"
+          speed={30}
           scale={1.2}
-          distortion={20}
-          swirl={60}
-          softness={80}
-          noise={{ opacity: 0.35, scale: 1 }}
+          distortion={15}
+          swirl={50}
+          softness={90}
+          noise={{ opacity: 0.25, scale: 1 }}
           style={{ width: '100vw', height: '100vh', position: 'absolute', inset: 0 }}
         />
       </div>
     );
   }
 
-  // Liquid Canvas Fallback with Noise Overlay matching Framer Liquid Asset
+  // Pure Unmixed Liquid Canvas Fallback
   return (
     <div className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
       <GradFlow
         config={{
           color1: { r: 14, g: 82, b: 255 },
           color2: { r: 130, g: 220, b: 255 },
-          color3: { r: 9, g: 13, b: 22 },
-          speed: 0.5,
-          scale: 2.4,
+          color3: { r: 255, g: 255, b: 255 },
+          speed: 0.4,
+          scale: 2.2,
           type: 'animated',
-          noise: 0.6
+          noise: 0.4
         }}
         className="absolute inset-0 w-full h-full"
       />

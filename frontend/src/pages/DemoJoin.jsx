@@ -103,8 +103,6 @@ export default function DemoJoin() {
       {/* Framer Animated Liquid Background Component */}
       <FramerLiquidBackground />
 
-      {/* Ambient Shading Overlay */}
-      <div className="fixed inset-0 bg-gradient-to-t from-[#111111]/40 via-transparent to-[#111111]/30 pointer-events-none z-0" />
 
       <div className="w-full max-w-md relative z-10 my-8">
         
