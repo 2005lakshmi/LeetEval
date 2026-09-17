@@ -265,7 +265,7 @@ const results = testCases.map((tc, i) => {
             passed: false,
             output: logs.join('\n').trim(),
             expected: tc.expectedOutput,
-            error: `${err.name || 'Error'}: ${err.message || String(err)}`,
+            error: (err.name || 'Error') + ': ' + (err.message || String(err)),
             runtimeMs: 0
         };
     }
