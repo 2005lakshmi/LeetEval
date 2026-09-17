@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { GradFlow } from 'gradflow';
 import { ArrowRight, Sparkles, ShieldCheck, AlertCircle } from 'lucide-react';
+import FramerLiquidBackground from '../components/FramerLiquidBackground';
 
 export default function DemoJoin() {
   const { slug } = useParams();
@@ -100,19 +100,8 @@ export default function DemoJoin() {
         }
       `}</style>
 
-      {/* Native GradFlow Animated Liquid Background */}
-      <GradFlow
-        config={{
-          color1: { r: 14, g: 82, b: 255 },
-          color2: { r: 130, g: 220, b: 255 },
-          color3: { r: 255, g: 255, b: 255 },
-          speed: 0.4,
-          scale: 2.2,
-          type: 'animated',
-          noise: 0.5
-        }}
-        className="fixed inset-0 w-full h-full pointer-events-none z-0"
-      />
+      {/* Framer Animated Liquid Background Component */}
+      <FramerLiquidBackground />
 
       {/* Ambient Shading Overlay */}
       <div className="fixed inset-0 bg-gradient-to-t from-[#111111]/40 via-transparent to-[#111111]/30 pointer-events-none z-0" />
