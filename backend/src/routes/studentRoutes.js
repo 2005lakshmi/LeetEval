@@ -465,14 +465,31 @@ router.post('/submit', async (req, res) => {
 
 // --- PUBLIC STUDENT DEMO ENDPOINTS ---
 
+// Helper to find demo room by slug or fallback to latest active demo room
+const findDemoRoomBySlugOrFallback = async (slug) => {
+  const cleanSlug = (slug || '').trim().toLowerCase();
+  let demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).populate('paperId');
+
+  if (!demoRoom) {
+    // Smart Fallback: Pick latest non-expired demo room if specific slug not found
+    demoRoom = await DemoRoom.findOne({
+      $or: [
+        { expireAt: null },
+        { expireAt: { $gt: new Date() } }
+      ]
+    }).sort({ createdAt: -1 }).populate('paperId');
+  }
+
+  return demoRoom;
+};
+
 // Fetch Demo Room info by slug
 router.get('/demo/:slug', async (req, res) => {
   try {
-    const cleanSlug = req.params.slug.trim().toLowerCase();
-    const demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).populate('paperId');
+    const demoRoom = await findDemoRoomBySlugOrFallback(req.params.slug);
 
     if (!demoRoom) {
-      return res.status(404).json({ message: 'Demo room link not found' });
+      return res.status(404).json({ message: 'No active demo room found. Please create a demo link in Superpanel (/admin/master).' });
     }
 
     if (demoRoom.isExpired()) {
@@ -511,11 +528,10 @@ router.post('/demo/:slug/join', async (req, res) => {
       return res.status(400).json({ message: 'Full Name is required to enter the demo' });
     }
 
-    const cleanSlug = req.params.slug.trim().toLowerCase();
-    const demoRoom = await DemoRoom.findOne({ slug: cleanSlug });
+    const demoRoom = await findDemoRoomBySlugOrFallback(req.params.slug);
 
     if (!demoRoom) {
-      return res.status(404).json({ message: 'Demo room link not found' });
+      return res.status(404).json({ message: 'No active demo room found. Please create a demo link in Superpanel (/admin/master).' });
     }
 
     if (demoRoom.isExpired()) {
@@ -554,7 +570,7 @@ router.post('/demo/:slug/join', async (req, res) => {
       actorType: 'student',
       action: 'DEMO_STUDENT_AUTO_ADMIT',
       targetId: String(session._id),
-      meta: { slug: cleanSlug, serialId, name: session.name }
+      meta: { slug: demoRoom.slug, serialId, name: session.name }
     });
 
     res.status(201).json({
@@ -572,17 +588,13 @@ router.post('/demo/:slug/join', async (req, res) => {
 // Fetch Demo Student Result by Serial ID
 router.get('/demo/:slug/result/:serialId', async (req, res) => {
   try {
-    const cleanSlug = req.params.slug.trim().toLowerCase();
     let rawSerial = req.params.serialId.trim().toUpperCase();
     const normalizedSerialId = rawSerial.startsWith('#') ? rawSerial : `#${rawSerial}`;
 
-    const demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).populate({
-      path: 'paperId',
-      populate: { path: 'questionIds', select: 'title difficulty sampleTestcases' }
-    });
+    const demoRoom = await findDemoRoomBySlugOrFallback(req.params.slug);
 
     if (!demoRoom) {
-      return res.status(404).json({ message: 'Demo room link not found' });
+      return res.status(404).json({ message: 'No active demo room found' });
     }
 
     const session = await StudentSession.findOne({

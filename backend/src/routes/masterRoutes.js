@@ -433,7 +433,7 @@ router.post('/demo-rooms', async (req, res) => {
       return res.status(400).json({ message: 'Slug must be at least 2 alphanumeric characters' });
     }
 
-    const reservedSlugs = ['admin', 'student', 'master', 'api', 'demo', 'login', 'register', 'dashboard', 'questions', 'papers', 'rooms', 'monitor', 'analytics'];
+    const reservedSlugs = ['admin', 'student', 'master', 'api', 'login', 'register', 'dashboard', 'questions', 'papers', 'rooms', 'monitor', 'analytics'];
     if (reservedSlugs.includes(cleanSlug)) {
       return res.status(400).json({ message: `"${cleanSlug}" is a reserved URL path. Please choose another name.` });
     }
