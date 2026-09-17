@@ -3,6 +3,11 @@ const router = express.Router();
 const os = require('os');
 const UserAdmin = require('../models/UserAdmin');
 const AuditLog = require('../models/AuditLog');
+const Room = require('../models/Room');
+const Paper = require('../models/Paper');
+const DemoRoom = require('../models/DemoRoom');
+const StudentSession = require('../models/StudentSession');
+const Submission = require('../models/Submission');
 const { verifyAdminToken, verifyMasterOnly } = require('../middleware/authMiddleware');
 const { getDBStats } = require('../config/db');
 const { getActiveSocketsCount } = require('../socket/socketHandler');
@@ -373,4 +378,203 @@ router.post('/simulate-load', async (req, res) => {
   }
 });
 
+// --- DEMO CREATION & MANAGEMENT ENDPOINTS ---
+
+// List all Demo Rooms
+router.get('/demo-rooms', async (req, res) => {
+  try {
+    const demoRooms = await DemoRoom.find()
+      .populate('paperId', 'title timeLimitMinutes allowedLanguages questionIds')
+      .populate('roomId')
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 });
+
+    const results = await Promise.all(demoRooms.map(async (dr) => {
+      const isExpired = dr.isExpired();
+      const studentCount = await StudentSession.countDocuments({ roomId: dr.roomId?._id });
+      const onlineCount = await StudentSession.countDocuments({ 
+        roomId: dr.roomId?._id, 
+        status: { $in: ['admitted', 'active'] } 
+      });
+
+      return {
+        _id: dr._id,
+        slug: dr.slug,
+        paperTitle: dr.paperId?.title || 'Unknown Paper',
+        paperId: dr.paperId?._id,
+        expirationType: dr.expirationType,
+        expirationValue: dr.expirationValue,
+        expireAt: dr.expireAt,
+        isExpired,
+        serialCounter: dr.serialCounter,
+        studentCount,
+        onlineCount,
+        createdAt: dr.createdAt,
+        createdBy: dr.createdBy?.name || 'Master'
+      };
+    }));
+
+    res.json({ demoRooms: results });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Create Demo Room
+router.post('/demo-rooms', async (req, res) => {
+  try {
+    const { slug, paperId, expirationType = 'none', expirationValue = 0 } = req.body;
+    if (!slug || !paperId) {
+      return res.status(400).json({ message: 'Slug and Paper are required' });
+    }
+
+    const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (cleanSlug.length < 2) {
+      return res.status(400).json({ message: 'Slug must be at least 2 alphanumeric characters' });
+    }
+
+    const reservedSlugs = ['admin', 'student', 'master', 'api', 'demo', 'login', 'register', 'dashboard', 'questions', 'papers', 'rooms', 'monitor', 'analytics'];
+    if (reservedSlugs.includes(cleanSlug)) {
+      return res.status(400).json({ message: `"${cleanSlug}" is a reserved URL path. Please choose another name.` });
+    }
+
+    const existing = await DemoRoom.findOne({ slug: cleanSlug });
+    if (existing) {
+      return res.status(400).json({ message: `Demo link "/${cleanSlug}" already exists. Please pick a different name.` });
+    }
+
+    const paper = await Paper.findById(paperId);
+    if (!paper) {
+      return res.status(404).json({ message: 'Selected question paper not found' });
+    }
+
+    // Calculate expiration timestamp
+    let expireAt = null;
+    const expVal = Math.max(1, parseInt(expirationValue, 10) || 1);
+    if (expirationType === 'hours') {
+      expireAt = new Date(Date.now() + expVal * 3600 * 1000);
+    } else if (expirationType === 'days') {
+      expireAt = new Date(Date.now() + expVal * 86400 * 1000);
+    }
+
+    // Create associated system Room
+    const roomCode = `DEMO_${cleanSlug.toUpperCase()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    const room = await Room.create({
+      roomCode,
+      createdBy: req.user._id,
+      paperId: paper._id,
+      status: 'live',
+      admittedAt: new Date()
+    });
+
+    const demoRoom = await DemoRoom.create({
+      slug: cleanSlug,
+      paperId: paper._id,
+      roomId: room._id,
+      expirationType: ['none', 'hours', 'days'].includes(expirationType) ? expirationType : 'none',
+      expirationValue: expVal,
+      expireAt,
+      createdBy: req.user._id
+    });
+
+    await AuditLog.create({
+      actorId: req.user._id,
+      actorType: 'master',
+      action: 'CREATE_DEMO_ROOM',
+      targetId: String(demoRoom._id),
+      meta: { slug: cleanSlug, paperTitle: paper.title, expirationType }
+    });
+
+    res.status(201).json({
+      message: `Demo link "/${cleanSlug}" created successfully`,
+      demoRoom: {
+        _id: demoRoom._id,
+        slug: demoRoom.slug,
+        paperTitle: paper.title,
+        expirationType: demoRoom.expirationType,
+        expireAt: demoRoom.expireAt
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Delete Demo Room
+router.delete('/demo-rooms/:id', async (req, res) => {
+  try {
+    const demoRoom = await DemoRoom.findById(req.params.id);
+    if (!demoRoom) return res.status(404).json({ message: 'Demo room not found' });
+
+    if (demoRoom.roomId) {
+      await Room.findByIdAndDelete(demoRoom.roomId);
+      await StudentSession.deleteMany({ roomId: demoRoom.roomId });
+    }
+
+    await DemoRoom.findByIdAndDelete(req.params.id);
+
+    await AuditLog.create({
+      actorId: req.user._id,
+      actorType: 'master',
+      action: 'DELETE_DEMO_ROOM',
+      targetId: String(req.params.id),
+      meta: { slug: demoRoom.slug }
+    });
+
+    res.json({ message: `Demo link "/${demoRoom.slug}" deleted successfully` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Fetch detailed student submission results for a Demo Room
+router.get('/demo-rooms/:id/results', async (req, res) => {
+  try {
+    const demoRoom = await DemoRoom.findById(req.params.id).populate({
+      path: 'paperId',
+      populate: { path: 'questionIds', select: 'title difficulty' }
+    });
+    if (!demoRoom) return res.status(404).json({ message: 'Demo room not found' });
+
+    const sessions = await StudentSession.find({ roomId: demoRoom.roomId }).sort({ joinedAt: -1 });
+    const questions = demoRoom.paperId?.questionIds || [];
+
+    const results = await Promise.all(sessions.map(async (s) => {
+      const submissions = await Submission.find({ sessionId: s._id, type: 'submit' }).sort({ createdAt: -1 });
+
+      const questionResults = questions.map((q) => {
+        const sub = submissions.find(sub => String(sub.questionId) === String(q._id));
+        return {
+          questionId: q._id,
+          title: q.title,
+          verdict: sub ? sub.verdict : 'Not Attempted',
+          code: sub ? sub.code : (s.currentCode?.get(String(q._id)) || ''),
+          language: sub ? sub.language : 'N/A',
+          submittedAt: sub ? sub.createdAt : null
+        };
+      });
+
+      return {
+        sessionId: s._id,
+        name: s.name,
+        serialId: s.usn,
+        status: s.status,
+        joinedAt: s.joinedAt,
+        submittedAt: s.submittedAt,
+        questionResults
+      };
+    }));
+
+    res.json({
+      demoSlug: demoRoom.slug,
+      paperTitle: demoRoom.paperId?.title || 'Question Paper',
+      totalParticipants: results.length,
+      results
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
+

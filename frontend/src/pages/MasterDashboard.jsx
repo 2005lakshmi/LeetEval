@@ -3,7 +3,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { GradFlow } from 'gradflow';
 import CodeEditor from '../components/CodeEditor';
-import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X, Copy, GripHorizontal } from 'lucide-react';
+import { ShieldCheck, Users, Database, Activity, UserCheck, UserX, AlertCircle, FileText, CheckCircle2, Edit, Key, Cpu, Radio, Sparkles, Play, RefreshCw, Gauge, Zap, Server, HardDrive, Layers, CheckSquare, Trash2, Clock, Code, PieChart, Maximize2, Minimize2, Terminal, Eye, X, Copy, GripHorizontal, Link, ExternalLink, Plus } from 'lucide-react';
 
 export default function MasterDashboard() {
   const [users, setUsers] = useState([]);
@@ -11,6 +11,15 @@ export default function MasterDashboard() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clearingQueue, setClearingQueue] = useState(false);
+
+  // Demo Creation & Management State
+  const [demoRooms, setDemoRooms] = useState([]);
+  const [papers, setPapers] = useState([]);
+  const [creatingDemo, setCreatingDemo] = useState(false);
+  const [demoForm, setDemoForm] = useState({ slug: '', paperId: '', expirationType: 'none', expirationValue: 1 });
+  const [selectedDemoResults, setSelectedDemoResults] = useState(null);
+  const [loadingDemoResults, setLoadingDemoResults] = useState(false);
+  const [copiedSlug, setCopiedSlug] = useState(null);
 
   // Edit User Modal State
   const [editUser, setEditUser] = useState(null);
@@ -138,20 +147,81 @@ export default function MasterDashboard() {
   const fetchMasterData = async () => {
     try {
       const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
-      const [uRes, hRes, aRes] = await Promise.all([
+      const [uRes, hRes, aRes, dRes, pRes] = await Promise.all([
         axios.get('/api/master/users', authHeader),
         axios.get('/api/master/health', authHeader),
-        axios.get('/api/master/audit-logs', authHeader)
+        axios.get('/api/master/audit-logs', authHeader),
+        axios.get('/api/master/demo-rooms', authHeader).catch(() => ({ data: { demoRooms: [] } })),
+        axios.get('/api/paper', authHeader).catch(() => ({ data: { papers: [] } }))
       ]);
 
       setUsers(uRes.data.users || []);
       setHealth(hRes.data);
       setAuditLogs(aRes.data.logs || []);
+      setDemoRooms(dRes.data.demoRooms || []);
+      const paperList = pRes.data.papers || [];
+      setPapers(paperList);
+      if (paperList.length > 0 && !demoForm.paperId) {
+        setDemoForm((prev) => ({ ...prev, paperId: paperList[0]._id }));
+      }
     } catch (err) {
       console.error('Error fetching master data:', err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateDemoRoom = async (e) => {
+    e.preventDefault();
+    if (!demoForm.slug.trim() || !demoForm.paperId) {
+      alert('Please provide a URL slug and select an exam paper.');
+      return;
+    }
+
+    setCreatingDemo(true);
+    try {
+      const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
+      const res = await axios.post('/api/master/demo-rooms', demoForm, authHeader);
+      alert(res.data.message || 'Demo room link created!');
+      setDemoForm((prev) => ({ ...prev, slug: '' }));
+      fetchMasterData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to create demo room link');
+    } finally {
+      setCreatingDemo(false);
+    }
+  };
+
+  const handleDeleteDemoRoom = async (id, slug) => {
+    if (!window.confirm(`Are you sure you want to delete demo link "/${slug}"? This will clear all its demo student sessions.`)) return;
+    try {
+      const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
+      await axios.delete(`/api/master/demo-rooms/${id}`, authHeader);
+      fetchMasterData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete demo room');
+    }
+  };
+
+  const handleViewDemoResults = async (id) => {
+    setLoadingDemoResults(true);
+    setSelectedDemoResults(null);
+    try {
+      const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
+      const res = await axios.get(`/api/master/demo-rooms/${id}/results`, authHeader);
+      setSelectedDemoResults(res.data);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to fetch demo room student results');
+    } finally {
+      setLoadingDemoResults(false);
+    }
+  };
+
+  const handleCopyDemoLink = (slug) => {
+    const fullUrl = `${window.location.origin}/demo/${slug}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopiedSlug(slug);
+    setTimeout(() => setCopiedSlug(null), 2000);
   };
 
   const handleClearQueue = async () => {
@@ -323,6 +393,194 @@ export default function MasterDashboard() {
           <div className="flex-shrink-0 flex items-center space-x-2 px-4 py-2.5 bg-emerald-100 border border-emerald-300 rounded-lg text-emerald-900 font-mono font-bold text-xs uppercase tracking-wider shadow-sm">
             <CheckCircle2 className="w-4 h-4 text-emerald-700" />
             <span>High-Concurrency Engine Active</span>
+          </div>
+        </div>
+
+        {/* Demo Creation & Management Section */}
+        <div className="relative rounded-xl p-6 bg-white/90 backdrop-blur-xl border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.12)] text-[#111111] space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div className="flex items-center space-x-2">
+              <Sparkles className="w-5 h-5 text-[#0E52FF]" />
+              <h2 className="font-['Playfair_Display',serif] text-xl font-extrabold text-[#111111]">
+                Demo Creation & Instant Exam Links
+              </h2>
+            </div>
+            <span className="text-xs font-mono font-bold text-slate-500">
+              Create instant custom demo links with auto-admit & sequential serial IDs
+            </span>
+          </div>
+
+          {/* Demo Creation Form */}
+          <form onSubmit={handleCreateDemoRoom} className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-4 font-mono text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              
+              {/* Custom Slug Input */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">Custom URL Slug:</label>
+                <div className="flex items-center">
+                  <span className="px-2.5 py-2 bg-slate-200 border border-r-0 border-slate-300 rounded-l-lg text-slate-600 font-bold">/</span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="demo123"
+                    value={demoForm.slug}
+                    onChange={(e) => setDemoForm({ ...demoForm, slug: e.target.value })}
+                    className="w-full p-2 bg-white border border-slate-300 rounded-r-lg font-bold text-slate-800 focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Exam Paper Dropdown */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">Select Exam Paper:</label>
+                <select
+                  value={demoForm.paperId}
+                  onChange={(e) => setDemoForm({ ...demoForm, paperId: e.target.value })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                >
+                  {papers.length === 0 ? (
+                    <option value="">No exam papers created yet</option>
+                  ) : (
+                    papers.map((p) => (
+                      <option key={p._id} value={p._id}>{p.title} ({p.questionIds?.length || 0} Qs)</option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Expiration Mode */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">Expiration Mode:</label>
+                <select
+                  value={demoForm.expirationType}
+                  onChange={(e) => setDemoForm({ ...demoForm, expirationType: e.target.value })}
+                  className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                >
+                  <option value="none">No expiration</option>
+                  <option value="hours">Hours</option>
+                  <option value="days">Days</option>
+                </select>
+              </div>
+
+              {/* Duration Value (if Hours or Days) */}
+              <div>
+                <label className="block font-bold text-slate-700 uppercase mb-1">
+                  {demoForm.expirationType === 'days' ? 'Duration (Days):' : demoForm.expirationType === 'hours' ? 'Duration (Hours):' : 'Expiration:'}
+                </label>
+                {demoForm.expirationType === 'none' ? (
+                  <input
+                    type="text"
+                    disabled
+                    value="Permanent Link"
+                    className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-bold text-slate-400 cursor-not-allowed"
+                  />
+                ) : (
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={demoForm.expirationValue}
+                    onChange={(e) => setDemoForm({ ...demoForm, expirationValue: e.target.value })}
+                    className="w-full p-2 bg-white border border-slate-300 rounded-lg font-bold text-slate-800 focus:ring-2 focus:ring-[#0E52FF] focus:outline-none"
+                  />
+                )}
+              </div>
+
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="submit"
+                disabled={creatingDemo}
+                className="px-5 py-2.5 bg-[#0E52FF] hover:bg-[#0642d9] text-white font-bold text-xs uppercase tracking-wider rounded-lg shadow-md flex items-center space-x-1.5 transition-all disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4 text-white" />
+                <span>{creatingDemo ? 'CREATING DEMO LINK...' : 'CREATE DEMO LINK'}</span>
+              </button>
+            </div>
+          </form>
+
+          {/* Created Demo Links Table */}
+          <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+            <table className="w-full text-left text-xs text-[#111111]">
+              <thead className="bg-[#FAF8F5] uppercase font-mono font-extrabold border-b border-slate-200">
+                <tr>
+                  <th className="p-3">Demo Link / Slug</th>
+                  <th className="p-3">Exam Paper</th>
+                  <th className="p-3">Participants</th>
+                  <th className="p-3">Expiration Status</th>
+                  <th className="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white font-mono text-xs">
+                {demoRooms.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="p-6 text-center text-slate-400 italic">
+                      No active demo links created yet. Use the form above to generate one.
+                    </td>
+                  </tr>
+                ) : (
+                  demoRooms.map((dr) => (
+                    <tr key={dr._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3 font-bold text-[#0E52FF]">
+                        <div className="flex items-center space-x-2">
+                          <span>/{dr.slug}</span>
+                          <button
+                            onClick={() => handleCopyDemoLink(dr.slug)}
+                            className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-[10px] font-bold text-slate-700 transition-colors"
+                            title="Copy full demo URL"
+                          >
+                            {copiedSlug === dr.slug ? 'Copied ✓' : 'Copy URL'}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="p-3 font-bold">{dr.paperTitle}</td>
+                      <td className="p-3">
+                        <span className="font-extrabold text-[#111111]">{dr.studentCount} student(s)</span>
+                        {dr.onlineCount > 0 && (
+                          <span className="ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            {dr.onlineCount} online
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {dr.isExpired ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-rose-100 text-rose-800 border border-rose-300">
+                            Expired
+                          </span>
+                        ) : dr.expirationType === 'none' ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-blue-100 text-blue-800 border border-blue-300">
+                            No Expiration
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                            Expires {new Date(dr.expireAt).toLocaleString()}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleViewDemoResults(dr._id)}
+                            className="px-3 py-1 bg-white hover:bg-slate-100 text-[#0E52FF] border border-[#0E52FF]/30 rounded-lg font-bold text-[11px] uppercase tracking-wider flex items-center space-x-1 shadow-sm"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-[#0E52FF]" />
+                            <span>View Results</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDemoRoom(dr._id, dr.slug)}
+                            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Delete Demo Link"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -1120,7 +1378,98 @@ export default function MasterDashboard() {
           </div>
         )}
 
+        {/* Master Admin Demo Results Viewer Modal */}
+        {(selectedDemoResults || loadingDemoResults) && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-text">
+            <div className="bg-white/95 backdrop-blur-xl p-6 rounded-2xl max-w-4xl w-full border border-white shadow-2xl space-y-4 text-[#111111] max-h-[90vh] flex flex-col">
+              
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                <div className="flex items-center space-x-2 font-mono">
+                  <Eye className="w-5 h-5 text-[#0E52FF]" />
+                  <h3 className="text-lg font-extrabold text-[#111111]">
+                    Student Test Submissions — /{selectedDemoResults?.demoSlug || 'Demo'}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSelectedDemoResults(null)}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {loadingDemoResults ? (
+                <div className="py-12 text-center text-slate-500 font-mono text-xs">
+                  Loading student submission results...
+                </div>
+              ) : selectedDemoResults?.results?.length === 0 ? (
+                <div className="py-12 text-center text-slate-500 font-mono text-xs italic">
+                  No students have taken this demo test yet.
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto space-y-4 font-mono">
+                  <div className="text-xs font-bold text-slate-600">
+                    Exam Paper: <strong className="text-[#0E52FF]">{selectedDemoResults?.paperTitle}</strong> • Total Participants: <strong className="text-[#111111]">{selectedDemoResults?.totalParticipants}</strong>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+                    <table className="w-full text-left text-xs text-[#111111]">
+                      <thead className="bg-[#FAF8F5] uppercase font-mono font-extrabold border-b border-slate-200">
+                        <tr>
+                          <th className="p-2.5">Serial ID</th>
+                          <th className="p-2.5">Student Name</th>
+                          <th className="p-2.5">Status</th>
+                          <th className="p-2.5">Submitted Questions & Code</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white font-mono text-xs">
+                        {selectedDemoResults?.results?.map((s) => (
+                          <tr key={s.sessionId} className="hover:bg-slate-50">
+                            <td className="p-2.5 font-bold text-[#0E52FF]">{s.serialId}</td>
+                            <td className="p-2.5 font-bold text-[#111111]">{s.name}</td>
+                            <td className="p-2.5 capitalize font-bold text-emerald-700">{s.status}</td>
+                            <td className="p-2.5 space-y-1">
+                              {s.questionResults?.map((q, qIdx) => (
+                                <div key={q.questionId || qIdx} className="text-[11px] p-2 bg-slate-50 border border-slate-200 rounded space-y-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-slate-800">{q.title}</span>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                      q.verdict === 'Accepted' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                                    }`}>
+                                      {q.verdict}
+                                    </span>
+                                  </div>
+                                  {q.code && (
+                                    <pre className="p-2 bg-slate-900 text-emerald-400 text-[10px] font-mono rounded overflow-x-auto max-h-32 select-text">
+                                      {q.code}
+                                    </pre>
+                                  )}
+                                </div>
+                              ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => setSelectedDemoResults(null)}
+                  className="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-mono font-bold rounded-lg shadow-md uppercase tracking-wider"
+                >
+                  Close Results Window
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
 }
+

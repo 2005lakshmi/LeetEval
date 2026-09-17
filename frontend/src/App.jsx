@@ -6,6 +6,7 @@ import Navbar from './components/Navbar';
 import StudentJoin from './pages/StudentJoin';
 import StudentWaitingRoom from './pages/StudentWaitingRoom';
 import StudentExam from './pages/StudentExam';
+import DemoJoin from './pages/DemoJoin';
 
 import AdminLogin from './pages/AdminLogin';
 import AdminRegister from './pages/AdminRegister';
@@ -99,6 +100,10 @@ export default function App() {
           path="/admin/master"
           element={user && user.role === 'master' ? <MasterDashboard /> : <Navigate to="/admin/dashboard" />}
         />
+
+        {/* Demo Link Routes */}
+        <Route path="/demo/:slug" element={<DemoJoin />} />
+        <Route path="/:slug" element={<DemoJoin />} />
 
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" />} />

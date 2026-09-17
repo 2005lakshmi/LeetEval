@@ -5,6 +5,8 @@ const Room = require('../models/Room');
 const StudentSession = require('../models/StudentSession');
 const Question = require('../models/Question');
 const Submission = require('../models/Submission');
+const Paper = require('../models/Paper');
+const DemoRoom = require('../models/DemoRoom');
 const AuditLog = require('../models/AuditLog');
 const { addSubmissionToQueue } = require('../services/queueService');
 const { getCachedRoom } = require('../services/roomCacheService');
@@ -461,4 +463,169 @@ router.post('/submit', async (req, res) => {
   }
 });
 
+// --- PUBLIC STUDENT DEMO ENDPOINTS ---
+
+// Fetch Demo Room info by slug
+router.get('/demo/:slug', async (req, res) => {
+  try {
+    const cleanSlug = req.params.slug.trim().toLowerCase();
+    const demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).populate('paperId');
+
+    if (!demoRoom) {
+      return res.status(404).json({ message: 'Demo room link not found' });
+    }
+
+    if (demoRoom.isExpired()) {
+      return res.status(410).json({ message: 'This demo room link has expired', expired: true });
+    }
+
+    const onlineCount = await StudentSession.countDocuments({
+      roomId: demoRoom.roomId,
+      status: { $in: ['admitted', 'active'] }
+    });
+
+    const studentCount = await StudentSession.countDocuments({ roomId: demoRoom.roomId });
+
+    const paper = demoRoom.paperId || {};
+    const questionCount = Array.isArray(paper.questionIds) ? paper.questionIds.length : 0;
+
+    res.json({
+      slug: demoRoom.slug,
+      paperTitle: paper.title || 'Demo Coding Assessment',
+      timeLimitMinutes: paper.timeLimitMinutes || 60,
+      questionCount,
+      onlineCount,
+      studentCount,
+      expireAt: demoRoom.expireAt
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Join Demo Test (Auto-Admit without waiting room)
+router.post('/demo/:slug/join', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Full Name is required to enter the demo' });
+    }
+
+    const cleanSlug = req.params.slug.trim().toLowerCase();
+    const demoRoom = await DemoRoom.findOne({ slug: cleanSlug });
+
+    if (!demoRoom) {
+      return res.status(404).json({ message: 'Demo room link not found' });
+    }
+
+    if (demoRoom.isExpired()) {
+      return res.status(410).json({ message: 'This demo link has expired' });
+    }
+
+    // Increment serial counter atomically
+    const updatedDemo = await DemoRoom.findByIdAndUpdate(
+      demoRoom._id,
+      { $inc: { serialCounter: 1 } },
+      { new: true }
+    );
+
+    const serialId = `#${updatedDemo.serialCounter}`;
+
+    // Create auto-admitted session
+    const session = await StudentSession.create({
+      roomId: demoRoom.roomId,
+      name: name.trim(),
+      usn: serialId,
+      status: 'admitted'
+    });
+
+    // Generate token for reconnect safety
+    const resumeToken = jwt.sign(
+      { sessionId: session._id, roomId: demoRoom.roomId, usn: serialId },
+      secretKey,
+      { expiresIn: '12h' }
+    );
+
+    session.resumeToken = resumeToken;
+    await session.save();
+
+    await AuditLog.create({
+      actorId: null,
+      actorType: 'student',
+      action: 'DEMO_STUDENT_AUTO_ADMIT',
+      targetId: String(session._id),
+      meta: { slug: cleanSlug, serialId, name: session.name }
+    });
+
+    res.status(201).json({
+      message: 'Admitted to Demo Test',
+      sessionId: session._id,
+      serialId,
+      resumeToken,
+      status: 'admitted'
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Fetch Demo Student Result by Serial ID
+router.get('/demo/:slug/result/:serialId', async (req, res) => {
+  try {
+    const cleanSlug = req.params.slug.trim().toLowerCase();
+    let rawSerial = req.params.serialId.trim().toUpperCase();
+    const normalizedSerialId = rawSerial.startsWith('#') ? rawSerial : `#${rawSerial}`;
+
+    const demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).populate({
+      path: 'paperId',
+      populate: { path: 'questionIds', select: 'title difficulty sampleTestcases' }
+    });
+
+    if (!demoRoom) {
+      return res.status(404).json({ message: 'Demo room link not found' });
+    }
+
+    const session = await StudentSession.findOne({
+      roomId: demoRoom.roomId,
+      usn: normalizedSerialId
+    });
+
+    if (!session) {
+      return res.status(404).json({ message: `No student record found for Serial ID "${normalizedSerialId}" in this demo.` });
+    }
+
+    const submissions = await Submission.find({ sessionId: session._id, type: 'submit' }).sort({ createdAt: -1 });
+    const questions = demoRoom.paperId?.questionIds || [];
+
+    const questionResults = questions.map((q) => {
+      const sub = submissions.find(s => String(s.questionId) === String(q._id));
+      const savedCode = session.currentCode?.get(String(q._id)) || '';
+
+      return {
+        questionId: q._id,
+        title: q.title,
+        difficulty: q.difficulty,
+        verdict: sub ? sub.verdict : (savedCode ? 'Draft / Not Submitted' : 'Not Attempted'),
+        code: sub ? sub.code : savedCode,
+        language: sub ? sub.language : 'python',
+        submittedAt: sub ? sub.createdAt : null,
+        rawOutput: sub ? sub.rawOutput : null
+      };
+    });
+
+    res.json({
+      name: session.name,
+      serialId: session.usn,
+      status: session.status,
+      paperTitle: demoRoom.paperId?.title || 'Demo Exam',
+      joinedAt: session.joinedAt,
+      submittedAt: session.submittedAt,
+      questions: questionResults
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
+
