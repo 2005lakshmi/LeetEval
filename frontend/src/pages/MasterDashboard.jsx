@@ -173,20 +173,29 @@ export default function MasterDashboard() {
 
   const handleCreateDemoRoom = async (e) => {
     e.preventDefault();
-    if (!demoForm.slug.trim() || !demoForm.paperId) {
-      alert('Please provide a URL slug and select an exam paper.');
+    const paperIdToUse = demoForm.paperId || (papers.length > 0 ? papers[0]._id : '');
+    const slugToUse = demoForm.slug.trim();
+
+    if (!slugToUse || !paperIdToUse) {
+      alert('Please provide a URL slug (e.g. demo123) and select an exam paper.');
       return;
     }
 
     setCreatingDemo(true);
     try {
       const authHeader = { headers: { Authorization: `Bearer ${localStorage.getItem('adminToken')}` } };
-      const res = await axios.post('/api/master/demo-rooms', demoForm, authHeader);
+      const payload = {
+        ...demoForm,
+        slug: slugToUse,
+        paperId: paperIdToUse
+      };
+      const res = await axios.post('/api/master/demo-rooms', payload, authHeader);
       alert(res.data.message || 'Demo room link created!');
       setDemoForm((prev) => ({ ...prev, slug: '' }));
       fetchMasterData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to create demo room link');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to create demo room link';
+      alert(`Error: ${errMsg}`);
     } finally {
       setCreatingDemo(false);
     }

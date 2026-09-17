@@ -477,13 +477,17 @@ router.post('/demo-rooms', async (req, res) => {
       createdBy: req.user._id
     });
 
-    await AuditLog.create({
-      actorId: req.user._id,
-      actorType: 'master',
-      action: 'CREATE_DEMO_ROOM',
-      targetId: String(demoRoom._id),
-      meta: { slug: cleanSlug, paperTitle: paper.title, expirationType }
-    });
+    try {
+      await AuditLog.create({
+        actorId: req.user._id,
+        actorType: 'master',
+        action: 'CREATE_DEMO_ROOM',
+        targetId: String(demoRoom._id),
+        meta: { slug: cleanSlug, paperTitle: paper.title, expirationType }
+      });
+    } catch (auditErr) {
+      console.error('AuditLog warning:', auditErr);
+    }
 
     res.status(201).json({
       message: `Demo link "/${cleanSlug}" created successfully`,
