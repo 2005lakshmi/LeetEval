@@ -402,13 +402,22 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
       : code;
     fs.writeFileSync(srcPath, codeToWrite, 'utf8');
 
+    const cleanOut = (raw) => {
+      if (!raw) return 'Execution completed with no output.';
+      let s = String(raw);
+      if (s.includes('__RESULTS__')) {
+        s = s.split('__RESULTS__')[0];
+      }
+      return s.trim() || 'Execution completed with no output.';
+    };
+
     // If user provided a custom shell command, run it directly inside tmpDir!
     if (customCommand && customCommand.trim()) {
       const res = await execAsync(customCommand.trim(), [], { cwd: tmpDir, timeout: 15000, shell: true });
       const rawOut = (res.stdout || '') + (res.stderr ? `\n${res.stderr}` : '');
       return {
         verdict: (res.error || res.status !== 0) ? 'Runtime / Shell Error' : 'Success',
-        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        rawOutput: cleanOut(rawOut),
         totalRuntimeMs: Date.now() - startTimeTotal
       };
     }
@@ -420,7 +429,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
       const rawOut = (res.stdout || '') + (res.stderr ? `\n${res.stderr}` : '');
       return {
         verdict: (res.error || res.status !== 0) ? 'Runtime Error' : 'Success',
-        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        rawOutput: cleanOut(rawOut),
         totalRuntimeMs: Date.now() - startTimeTotal
       };
     }
@@ -430,7 +439,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
       const rawOut = (res.stdout || '') + (res.stderr ? `\n${res.stderr}` : '');
       return {
         verdict: (res.error || res.status !== 0) ? 'Runtime Error' : 'Success',
-        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        rawOutput: cleanOut(rawOut),
         totalRuntimeMs: Date.now() - startTimeTotal
       };
     }
@@ -450,7 +459,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
       const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
       return {
         verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
-        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        rawOutput: cleanOut(rawOut),
         totalRuntimeMs: Date.now() - startTimeTotal
       };
     }
@@ -470,7 +479,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
       const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
       return {
         verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
-        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        rawOutput: cleanOut(rawOut),
         totalRuntimeMs: Date.now() - startTimeTotal
       };
     }
@@ -490,7 +499,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
       const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
       return {
         verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
-        rawOutput: rawOut.trim() || 'Execution completed with no output.',
+        rawOutput: cleanOut(rawOut),
         totalRuntimeMs: Date.now() - startTimeTotal
       };
     }

@@ -754,7 +754,6 @@ export default function MasterDashboard() {
                     <tr>
                       <th className="p-2.5">Run #</th>
                       <th className="p-2.5">Language</th>
-                      <th className="p-2.5">Verdict</th>
                       <th className="p-2.5">Latency</th>
                       <th className="p-2.5">Console Output</th>
                     </tr>
@@ -764,13 +763,6 @@ export default function MasterDashboard() {
                       <tr key={idx} className="hover:bg-slate-50">
                         <td className="p-2.5 font-bold">{log.index}</td>
                         <td className="p-2.5 uppercase font-bold text-[#0E52FF]">{log.language}</td>
-                        <td className="p-2.5">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            log.verdict === 'Accepted' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
-                          }`}>
-                            {log.verdict}
-                          </span>
-                        </td>
                         <td className="p-2.5 font-bold text-[#111111]">{log.latencyMs} ms</td>
                         <td className="p-2.5">
                           <button
@@ -798,40 +790,37 @@ export default function MasterDashboard() {
               <div className="flex items-center justify-between border-b border-slate-200 pb-3">
                 <div className="flex items-center space-x-2 font-mono">
                   <Code className="w-5 h-5 text-[#0E52FF]" />
-                  <h3 className={`text-lg font-extrabold uppercase ${langConfigs[expandedLanguage].color}`}>
-                    {langConfigs[expandedLanguage].title} (Expanded Code Editor)
+                  <h3 className="text-lg font-extrabold text-[#111111] capitalize">
+                    Edit {langConfigs[expandedLanguage]?.label} Benchmark Script
                   </h3>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className="flex items-center space-x-1 font-mono text-xs">
-                    <span className="text-slate-500 font-bold uppercase">Runs:</span>
-                    <input
-                      type="number"
-                      min="0"
-                      max="50"
-                      value={benchForm[langConfigs[expandedLanguage].countKey]}
-                      onChange={(e) => setBenchForm({ ...benchForm, [langConfigs[expandedLanguage].countKey]: e.target.value })}
-                      className="w-16 p-1 bg-white border border-[#E5E0D8] rounded text-center font-bold focus:ring-2 focus:ring-[#0E52FF]"
-                    />
-                  </div>
-                  <button
-                    onClick={() => setExpandedLanguage(null)}
-                    className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100 flex items-center space-x-1 font-mono text-xs font-bold uppercase"
-                  >
-                    <Minimize2 className="w-4 h-4" />
-                    <span>Minimize</span>
-                  </button>
-                </div>
+                <button
+                  onClick={() => setExpandedLanguage(null)}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg hover:bg-slate-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              <div className="flex-1 overflow-hidden flex flex-col h-96">
-                <label className="block text-xs font-mono font-bold text-slate-500 uppercase mb-2">Source Code Editor:</label>
-                <div className="flex-1 rounded-xl overflow-hidden border border-slate-200">
-                  <CodeEditor
-                    value={benchForm[langConfigs[expandedLanguage].codeKey]}
-                    onChange={(val) => setBenchForm({ ...benchForm, [langConfigs[expandedLanguage].codeKey]: val })}
-                    language={langConfigs[expandedLanguage].editorLang}
+              <div className="flex-1 space-y-3 flex flex-col overflow-hidden">
+                <div className="space-y-1">
+                  <label className="block text-xs font-mono font-bold text-slate-500 uppercase">Shell Command:</label>
+                  <input
+                    type="text"
+                    value={benchForm[langConfigs[expandedLanguage]?.cmdKey] || ''}
+                    onChange={(e) => setBenchForm({ ...benchForm, [langConfigs[expandedLanguage]?.cmdKey]: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-xs font-mono font-bold text-slate-800"
                   />
+                </div>
+                <div className="flex-1 space-y-1 flex flex-col overflow-hidden">
+                  <label className="block text-xs font-mono font-bold text-slate-500 uppercase">Script Source Code:</label>
+                  <div className="flex-1 rounded-lg overflow-hidden border border-slate-200">
+                    <CodeEditor
+                      value={benchForm[langConfigs[expandedLanguage]?.codeKey] || ''}
+                      onChange={(val) => setBenchForm({ ...benchForm, [langConfigs[expandedLanguage]?.codeKey]: val })}
+                      language={langConfigs[expandedLanguage]?.editorLang}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -868,7 +857,6 @@ export default function MasterDashboard() {
 
               <div className="space-y-2 font-mono">
                 <div className="flex items-center justify-between text-xs">
-                  <span>Verdict: <strong className="text-emerald-700">{selectedBenchmarkLog.verdict}</strong></span>
                   <span>Latency: <strong className="text-[#0E52FF]">{selectedBenchmarkLog.latencyMs} ms</strong></span>
                 </div>
                 <div className="text-xs font-bold uppercase text-slate-500">Raw Console Log & Stdout:</div>
