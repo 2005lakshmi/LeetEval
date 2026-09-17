@@ -29,16 +29,6 @@ export default function FramerLiquidBackground() {
     return (
       <div className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
         <FramerComponent
-          preset="custom"
-          color1="#0E52FF"
-          color2="#82DCFF"
-          color3="#FFFFFF"
-          speed={30}
-          scale={1.2}
-          distortion={15}
-          swirl={50}
-          softness={90}
-          noise={{ opacity: 0.25, scale: 1 }}
           style={{ width: '100vw', height: '100vh', position: 'absolute', inset: 0 }}
         />
       </div>
