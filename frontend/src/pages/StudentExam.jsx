@@ -102,11 +102,20 @@ export default function StudentExam() {
       }
       if (data.status === 'kicked') setKicked(true);
 
-      // Initialize boilerplate code or existing currentCode
+      // Initialize boilerplate code or existing currentCode from DB + localStorage browser cache
       const initialCodes = { ...data.currentCode };
       (data.questions || []).forEach((q) => {
-        if (q && q._id && !initialCodes[q._id]) {
-          initialCodes[q._id] = q.boilerplate?.python || 'class Solution:\n    def solution(self, input_val):\n        return input_val\n';
+        if (q && q._id) {
+          try {
+            const localSaved = localStorage.getItem(`leeteval_code_${sessionId}_${q._id}`);
+            if (localSaved !== null && localSaved !== undefined && localSaved !== '') {
+              initialCodes[q._id] = localSaved;
+            }
+          } catch (e) {}
+
+          if (!initialCodes[q._id]) {
+            initialCodes[q._id] = q.boilerplate?.python || 'class Solution:\n    def solution(self, input_val):\n        return input_val\n';
+          }
         }
       });
       setCodeMap(initialCodes);
@@ -389,17 +398,16 @@ export default function StudentExam() {
     }
   };
 
-  // Code change handler — saves to local React state + localStorage only (NO auto HTTP saves)
-  const handleCodeChange = (newCode) => {
-    const currentQ = examData?.questions[activeQuestionIndex];
-    if (!currentQ) return;
+  // Code change handler — saves to local React state + localStorage browser cache (NO HTTP overhead)
+  const handleCodeChange = (targetQuestionId, newCode) => {
+    if (!targetQuestionId) return;
 
-    setCodeMap((prev) => ({ ...prev, [currentQ._id]: newCode }));
+    setCodeMap((prev) => ({ ...prev, [targetQuestionId]: newCode }));
     setSaveStatus('Unsaved');
 
-    // Backup to localStorage immediately (zero network cost)
+    // Save to local browser cache immediately (zero network cost)
     try {
-      localStorage.setItem(`leeteval_code_${sessionId}_${currentQ._id}`, newCode);
+      localStorage.setItem(`leeteval_code_${sessionId}_${targetQuestionId}`, newCode);
     } catch (e) {}
   };
 
@@ -450,6 +458,9 @@ export default function StudentExam() {
     if (!currentQ) return;
     const defaultCode = currentQ.boilerplate?.[selectedLanguage] || '';
     setCodeMap((prev) => ({ ...prev, [currentQ._id]: defaultCode }));
+    try {
+      localStorage.removeItem(`leeteval_code_${sessionId}_${currentQ._id}`);
+    } catch (e) {}
   };
 
   // Run sample cases
@@ -995,8 +1006,9 @@ export default function StudentExam() {
             {/* CodeMirror Editor Area */}
             <div className="flex-1 overflow-hidden bg-[#1e1e1e]">
               <CodeEditor
+                key={`editor_${currentQuestion._id}_${selectedLanguage}`}
                 value={codeMap[currentQuestion._id] || ''}
-                onChange={handleCodeChange}
+                onChange={(newCode) => handleCodeChange(currentQuestion._id, newCode)}
                 language={selectedLanguage}
               />
             </div>
