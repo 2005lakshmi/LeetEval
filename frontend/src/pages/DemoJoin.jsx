@@ -48,8 +48,10 @@ export default function DemoJoin() {
         localStorage.setItem(`leeteval_resume_${sessionId}`, resumeToken);
       }
 
-      // Enter standard live coding exam workspace!
-      navigate(`/student/exam/${sessionId}`);
+      // Navigate to waiting room portal for full screen requirement prompt & proctor rules
+      navigate(`/student/waiting/${sessionId}`, {
+        state: { name: name.trim(), usn: res.data.serialId || '#1', roomCode: 'DEMO' }
+      });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to enter demo test room');
       setJoining(false);

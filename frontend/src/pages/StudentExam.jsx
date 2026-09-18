@@ -4,6 +4,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import confetti from 'canvas-confetti';
 import { GradFlow } from 'gradflow';
+import FramerLiquidBackground from '../components/FramerLiquidBackground';
 import CodeEditor from '../components/CodeEditor';
 import { Clock, ShieldAlert, Play, Send, CheckCircle2, XCircle, AlertTriangle, Maximize2, RotateCcw, FileText, Code2, Terminal, ChevronRight, Check, RefreshCw, Lock, Minimize2, GripVertical, GripHorizontal, LogOut, Save } from 'lucide-react';
 
@@ -626,14 +627,44 @@ export default function StudentExam() {
 
   if (autoSubmitted) {
     return (
-      <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center p-4">
-        <div className="bg-[#282828] p-8 rounded-2xl text-center max-w-md border border-emerald-500/30 shadow-2xl">
-          <CheckCircle2 className="w-16 h-16 text-[#00b8a3] mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-white">Exam Paper Submitted</h2>
-          <p className="text-sm text-slate-400 mt-2">
-            Your answers have been stored and submitted successfully. You may close this browser tab.
-          </p>
+      <div className="min-h-screen bg-[#111111] text-[#FFFFFF] font-['Source_Sans_3',sans-serif] flex items-center justify-center p-4 relative overflow-hidden select-none">
+        
+        {/* Framer Animated Liquid Background Component */}
+        <FramerLiquidBackground />
+
+        <div className="w-full max-w-md relative z-10 my-8 text-center space-y-6">
+          
+          {/* Header Section */}
+          <div className="text-center mb-6 space-y-2">
+            <h1 className="font-['Playfair_Display',serif] text-5xl sm:text-6xl font-extrabold tracking-tight text-[#FFFFFF] drop-shadow-xl">
+              LeetEval
+            </h1>
+          </div>
+
+          {/* Highly Transparent Cream Glassmorphism Card */}
+          <div className="relative rounded-2xl p-8 bg-white/35 backdrop-blur-xl border border-white/70 shadow-[0_25px_60px_rgba(0,0,0,0.25)] text-[#111111] text-center space-y-5 overflow-hidden">
+            <div className="inline-flex p-3.5 rounded-2xl bg-white/95 border border-white text-emerald-600 shadow-xl backdrop-blur-md mx-auto">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+            </div>
+
+            <h2 className="font-['Playfair_Display',serif] text-3xl font-extrabold text-[#111111] tracking-tight">
+              Exam Paper Submitted
+            </h2>
+
+            <p className="text-sm font-semibold text-[#222222] leading-relaxed">
+              Your answers have been stored and submitted successfully. You may close this browser tab.
+            </p>
+
+            <button
+              onClick={() => navigate('/')}
+              className="w-full py-3.5 px-6 bg-[#0E52FF] hover:bg-[#0642d9] text-white font-mono font-bold text-xs uppercase tracking-wider rounded-lg shadow-lg transition-all active:scale-[0.99] mt-2"
+            >
+              Return to Homepage
+            </button>
+          </div>
+
         </div>
+
       </div>
     );
   }
