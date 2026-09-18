@@ -20,6 +20,11 @@ async function updateExpiredRooms() {
     const now = new Date();
 
     for (const room of liveRooms) {
+      // Demo portal rooms remain active and reusable for new visitors; skip room-level timer expiration
+      if (room.roomCode && room.roomCode.startsWith('DEMO_')) {
+        continue;
+      }
+
       if (room.admittedAt) {
         const durationMin = room.timeLimitMinutesOverride || room.paperId?.timeLimitMinutes || 60;
         const elapsedMin = (now - new Date(room.admittedAt)) / (1000 * 60);

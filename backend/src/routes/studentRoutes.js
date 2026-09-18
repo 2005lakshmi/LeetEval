@@ -182,9 +182,13 @@ router.get('/session/:sessionId', async (req, res) => {
     const totalMinutes = room.timeLimitMinutesOverride || paper.timeLimitMinutes || 60;
     const totalMs = totalMinutes * 60 * 1000;
     
+    // For demo rooms, each student gets their full exam paper duration starting from when they joined!
+    const isDemoRoom = room.roomCode && room.roomCode.startsWith('DEMO_');
+    const startTime = isDemoRoom ? (session.joinedAt || session.createdAt) : room.admittedAt;
+
     let timeRemainingSeconds = totalMinutes * 60;
-    if (room.admittedAt) {
-      const elapsedMs = Date.now() - new Date(room.admittedAt).getTime();
+    if (startTime) {
+      const elapsedMs = Date.now() - new Date(startTime).getTime();
       timeRemainingSeconds = Math.max(0, Math.floor((totalMs - elapsedMs) / 1000));
     }
 
@@ -478,6 +482,15 @@ const findDemoRoomBySlugOrFallback = async (slug) => {
         { expireAt: { $gt: new Date() } }
       ]
     }).sort({ createdAt: -1 }).populate('paperId');
+  }
+
+  // Ensure associated system Room is marked 'live' if demo room link is active
+  if (demoRoom && demoRoom.roomId && !demoRoom.isExpired()) {
+    const systemRoom = await Room.findById(demoRoom.roomId);
+    if (systemRoom && systemRoom.status === 'ended') {
+      systemRoom.status = 'live';
+      await systemRoom.save();
+    }
   }
 
   return demoRoom;

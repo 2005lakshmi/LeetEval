@@ -13,6 +13,7 @@ const { getDBStats } = require('../config/db');
 const { getActiveSocketsCount } = require('../socket/socketHandler');
 const { getQueueMetrics, clearSubmissionQueue, executeCode } = require('../services/queueService');
 const { executeCode: judge0ExecuteCode, executeRawBenchmarkCode } = require('../services/judge0Service');
+const { invalidateRoomCache } = require('../services/roomCacheService');
 
 router.use(verifyAdminToken, verifyMasterOnly);
 
@@ -479,6 +480,8 @@ router.post('/demo-rooms', async (req, res) => {
       console.error('AuditLog warning:', auditErr);
     }
 
+    invalidateRoomCache();
+
     res.status(201).json({
       message: `Demo link "/${cleanSlug}" created successfully`,
       demoRoom: {
@@ -506,6 +509,8 @@ router.delete('/demo-rooms/:id', async (req, res) => {
     }
 
     await DemoRoom.findByIdAndDelete(req.params.id);
+
+    invalidateRoomCache();
 
     await AuditLog.create({
       actorId: req.user._id,
