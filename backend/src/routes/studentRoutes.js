@@ -469,19 +469,27 @@ router.post('/submit', async (req, res) => {
 
 // --- PUBLIC STUDENT DEMO ENDPOINTS ---
 
-// Helper to find demo room by slug or fallback to latest active demo room
+// Helper to find demo room by slug or fallback to latest active demo room for root /demo
 const findDemoRoomBySlugOrFallback = async (slug) => {
   const cleanSlug = (slug || '').trim().toLowerCase();
-  let demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).populate('paperId');
+  let demoRoom = null;
 
-  if (!demoRoom) {
-    // Smart Fallback: Pick latest non-expired demo room if specific slug not found
-    demoRoom = await DemoRoom.findOne({
-      $or: [
-        { expireAt: null },
-        { expireAt: { $gt: new Date() } }
-      ]
-    }).sort({ createdAt: -1 }).populate('paperId');
+  if (cleanSlug && cleanSlug !== 'demo') {
+    // Exact lookup for specific custom slug (e.g. /demo123) - fetch latest created
+    demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).sort({ createdAt: -1 }).populate('paperId');
+  } else {
+    // Lookup for default /demo path - fetch latest created with slug 'demo' first
+    demoRoom = await DemoRoom.findOne({ slug: 'demo' }).sort({ createdAt: -1 }).populate('paperId');
+
+    // Smart Fallback ONLY for root /demo path if no explicit 'demo' slug room exists
+    if (!demoRoom) {
+      demoRoom = await DemoRoom.findOne({
+        $or: [
+          { expireAt: null },
+          { expireAt: { $gt: new Date() } }
+        ]
+      }).sort({ createdAt: -1 }).populate('paperId');
+    }
   }
 
   // Ensure associated system Room is marked 'live' if demo room link is active
@@ -502,7 +510,7 @@ router.get('/demo/:slug', async (req, res) => {
     const demoRoom = await findDemoRoomBySlugOrFallback(req.params.slug);
 
     if (!demoRoom) {
-      return res.status(404).json({ message: 'No active demo room found. Please create a demo link in Superpanel (/admin/master).' });
+      return res.status(404).json({ message: `Demo link "/${req.params.slug}" not found. Please check the URL or create a demo link in Superpanel (/admin/master).` });
     }
 
     if (demoRoom.isExpired()) {

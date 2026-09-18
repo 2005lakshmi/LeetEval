@@ -431,7 +431,16 @@ router.post('/demo-rooms', async (req, res) => {
 
     const existing = await DemoRoom.findOne({ slug: cleanSlug });
     if (existing) {
-      return res.status(400).json({ message: `Demo link "/${cleanSlug}" already exists. Please pick a different name.` });
+      if (existing.isExpired()) {
+        // Auto-purge old expired demo room & associated system room/sessions before re-creating
+        if (existing.roomId) {
+          await Room.findByIdAndDelete(existing.roomId);
+          await StudentSession.deleteMany({ roomId: existing.roomId });
+        }
+        await DemoRoom.findByIdAndDelete(existing._id);
+      } else {
+        return res.status(400).json({ message: `Demo link "/${cleanSlug}" is currently active. Please delete it from the table below before re-creating.` });
+      }
     }
 
     const paper = await Paper.findById(paperId);
