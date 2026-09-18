@@ -473,22 +473,45 @@ router.post('/submit', async (req, res) => {
 const findDemoRoomBySlugOrFallback = async (slug) => {
   const cleanSlug = (slug || '').trim().toLowerCase();
   let demoRoom = null;
+  const now = new Date();
 
   if (cleanSlug && cleanSlug !== 'demo') {
-    // Exact lookup for specific custom slug (e.g. /demo123) - fetch latest created
-    demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).sort({ createdAt: -1 }).populate('paperId');
-  } else {
-    // Lookup for default /demo path - fetch latest created with slug 'demo' first
-    demoRoom = await DemoRoom.findOne({ slug: 'demo' }).sort({ createdAt: -1 }).populate('paperId');
+    // 1. Exact lookup for custom slug: search for active non-expired room first!
+    demoRoom = await DemoRoom.findOne({
+      slug: cleanSlug,
+      $or: [
+        { expireAt: null },
+        { expireAt: { $gt: now } }
+      ]
+    }).sort({ createdAt: -1 }).populate('paperId');
 
-    // Smart Fallback ONLY for root /demo path if no explicit 'demo' slug room exists
+    // 2. If no active room exists for custom slug, fetch latest expired room (to report expired status)
+    if (!demoRoom) {
+      demoRoom = await DemoRoom.findOne({ slug: cleanSlug }).sort({ createdAt: -1 }).populate('paperId');
+    }
+  } else {
+    // 3. For root /demo path: search for active non-expired room with slug 'demo' first!
+    demoRoom = await DemoRoom.findOne({
+      slug: 'demo',
+      $or: [
+        { expireAt: null },
+        { expireAt: { $gt: now } }
+      ]
+    }).sort({ createdAt: -1 }).populate('paperId');
+
+    // 4. Fallback for root /demo path: pick latest active non-expired demo room in system
     if (!demoRoom) {
       demoRoom = await DemoRoom.findOne({
         $or: [
           { expireAt: null },
-          { expireAt: { $gt: new Date() } }
+          { expireAt: { $gt: now } }
         ]
       }).sort({ createdAt: -1 }).populate('paperId');
+    }
+
+    // 5. If still no active room, check if any expired 'demo' slug room exists
+    if (!demoRoom) {
+      demoRoom = await DemoRoom.findOne({ slug: 'demo' }).sort({ createdAt: -1 }).populate('paperId');
     }
   }
 
@@ -510,7 +533,7 @@ router.get('/demo/:slug', async (req, res) => {
     const demoRoom = await findDemoRoomBySlugOrFallback(req.params.slug);
 
     if (!demoRoom) {
-      return res.status(404).json({ message: `Demo link "/${req.params.slug}" not found. Please check the URL or create a demo link in Superpanel (/admin/master).` });
+      return res.status(404).json({ message: 'Demo link not found or no longer active.' });
     }
 
     if (demoRoom.isExpired()) {
@@ -552,7 +575,7 @@ router.post('/demo/:slug/join', async (req, res) => {
     const demoRoom = await findDemoRoomBySlugOrFallback(req.params.slug);
 
     if (!demoRoom) {
-      return res.status(404).json({ message: 'No active demo room found. Please create a demo link in Superpanel (/admin/master).' });
+      return res.status(404).json({ message: 'Demo link not found or no longer active.' });
     }
 
     if (demoRoom.isExpired()) {
