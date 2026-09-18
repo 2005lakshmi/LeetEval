@@ -76,6 +76,27 @@ export default function StudentExam() {
     return String(inp);
   };
 
+  // Force Desktop Site Mode for Mobile Devices on Exam Workspace
+  useEffect(() => {
+    let metaViewport = document.querySelector('meta[name="viewport"]');
+    const originalContent = metaViewport ? metaViewport.getAttribute('content') : 'width=device-width, initial-scale=1.0';
+
+    if (metaViewport) {
+      metaViewport.setAttribute('content', 'width=1280, initial-scale=0.35, maximum-scale=3.0, user-scalable=yes');
+    } else {
+      metaViewport = document.createElement('meta');
+      metaViewport.name = 'viewport';
+      metaViewport.content = 'width=1280, initial-scale=0.35, maximum-scale=3.0, user-scalable=yes';
+      document.head.appendChild(metaViewport);
+    }
+
+    return () => {
+      if (metaViewport) {
+        metaViewport.setAttribute('content', originalContent);
+      }
+    };
+  }, []);
+
   // Fetch initial exam session data
   useEffect(() => {
     fetchSessionData();
@@ -759,7 +780,7 @@ export default function StudentExam() {
   };
 
   return (
-    <div className="h-screen bg-[#1a1a1a] text-[#eff1f6] flex flex-col overflow-hidden font-sans select-none relative">
+    <div className="h-screen bg-[#1a1a1a] text-[#eff1f6] flex flex-col overflow-hidden font-sans select-none relative min-w-[1280px]">
       
       {/* Top Navbar Header */}
       <header className="h-12 border-b border-[#333333] bg-[#282828] px-4 flex items-center justify-between flex-shrink-0 z-10">
