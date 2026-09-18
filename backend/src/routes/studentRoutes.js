@@ -516,6 +516,27 @@ const findDemoRoomBySlugOrFallback = async (slug) => {
     }
   }
 
+  // Purge any stale ghost records with the same slug if an active non-expired demo room is loaded
+  if (demoRoom && !demoRoom.isExpired()) {
+    try {
+      const ghostRecords = await DemoRoom.find({
+        slug: demoRoom.slug,
+        _id: { $ne: demoRoom._id }
+      });
+      for (const ghost of ghostRecords) {
+        if (ghost.roomId) {
+          await Room.findByIdAndDelete(ghost.roomId);
+          await StudentSession.deleteMany({ roomId: ghost.roomId });
+        }
+      }
+      if (ghostRecords.length > 0) {
+        await DemoRoom.deleteMany({ slug: demoRoom.slug, _id: { $ne: demoRoom._id } });
+      }
+    } catch (cleanErr) {
+      console.error('Ghost record purge notice:', cleanErr.message);
+    }
+  }
+
   // Ensure associated system Room is marked 'live' if demo room link is active
   if (demoRoom && demoRoom.roomId && !demoRoom.isExpired()) {
     const systemRoom = await Room.findById(demoRoom.roomId);

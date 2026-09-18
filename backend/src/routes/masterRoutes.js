@@ -431,19 +431,15 @@ router.post('/demo-rooms', async (req, res) => {
       return res.status(400).json({ message: `"${cleanSlug}" is a reserved URL path. Please choose another name.` });
     }
 
-    const existing = await DemoRoom.findOne({ slug: cleanSlug });
-    if (existing) {
-      if (existing.isExpired()) {
-        // Auto-purge old expired demo room & associated system room/sessions before re-creating
-        if (existing.roomId) {
-          await Room.findByIdAndDelete(existing.roomId);
-          await StudentSession.deleteMany({ roomId: existing.roomId });
-        }
-        await DemoRoom.findByIdAndDelete(existing._id);
-      } else {
-        return res.status(400).json({ message: `Demo link "/${cleanSlug}" is currently active. Please delete it from the table below before re-creating.` });
+    // Completely wipe all existing demo rooms, system rooms & student sessions for this slug from MongoDB
+    const existingRooms = await DemoRoom.find({ slug: cleanSlug });
+    for (const dr of existingRooms) {
+      if (dr.roomId) {
+        await Room.findByIdAndDelete(dr.roomId);
+        await StudentSession.deleteMany({ roomId: dr.roomId });
       }
     }
+    await DemoRoom.deleteMany({ slug: cleanSlug });
 
     const paper = await Paper.findById(paperId);
     if (!paper) {
@@ -514,12 +510,19 @@ router.delete('/demo-rooms/:id', async (req, res) => {
     const demoRoom = await DemoRoom.findById(req.params.id);
     if (!demoRoom) return res.status(404).json({ message: 'Demo room not found' });
 
-    if (demoRoom.roomId) {
-      await Room.findByIdAndDelete(demoRoom.roomId);
-      await StudentSession.deleteMany({ roomId: demoRoom.roomId });
+    const slugToDelete = demoRoom.slug;
+
+    // Find ALL demo rooms matching this slug to delete all associated system rooms and student sessions
+    const matchingRooms = await DemoRoom.find({ slug: slugToDelete });
+    for (const dr of matchingRooms) {
+      if (dr.roomId) {
+        await Room.findByIdAndDelete(dr.roomId);
+        await StudentSession.deleteMany({ roomId: dr.roomId });
+      }
     }
 
-    await DemoRoom.findByIdAndDelete(req.params.id);
+    // Completely wipe all demo room documents for this slug from MongoDB!
+    await DemoRoom.deleteMany({ slug: slugToDelete });
 
     invalidateRoomCache();
 
@@ -528,10 +531,10 @@ router.delete('/demo-rooms/:id', async (req, res) => {
       actorType: 'master',
       action: 'DELETE_DEMO_ROOM',
       targetId: String(req.params.id),
-      meta: { slug: demoRoom.slug }
+      meta: { slug: slugToDelete }
     });
 
-    res.json({ message: `Demo link "/${demoRoom.slug}" deleted successfully` });
+    res.json({ message: `Demo link "/${slugToDelete}" deleted completely from database` });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
