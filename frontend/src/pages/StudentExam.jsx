@@ -437,8 +437,12 @@ export default function StudentExam() {
   const handleManualSave = async () => {
     const currentQ = examData?.questions[activeQuestionIndex];
     if (!currentQ) return;
-    const currentCode = codeMap[currentQ._id];
-    if (!currentCode && currentCode !== '') return;
+    const currentCode = codeMap[currentQ._id] || '';
+
+    // Cache locally first
+    try {
+      localStorage.setItem(`leeteval_code_${sessionId}_${currentQ._id}`, currentCode);
+    } catch (e) {}
 
     setSaveStatus('Saving...');
     try {
@@ -454,8 +458,19 @@ export default function StudentExam() {
     }
   };
 
-  // Handle Question Navigation with Sequential Lock Check
+  // Handle Question Navigation with Sequential Lock Check & Instant Local Storage Cache Sync
   const handleQuestionTabClick = (idx) => {
+    // 1. Save current question code to browser cache before switching tabs
+    const currentQ = examData?.questions[activeQuestionIndex];
+    if (currentQ && currentQ._id) {
+      const currentCode = codeMap[currentQ._id];
+      if (currentCode !== undefined && currentCode !== null) {
+        try {
+          localStorage.setItem(`leeteval_code_${sessionId}_${currentQ._id}`, currentCode);
+        } catch (e) {}
+      }
+    }
+
     if (examData?.sequentialLock && idx > activeQuestionIndex) {
       const currentQId = String(examData.questions[activeQuestionIndex]._id);
       const isSubmitted = submittedQuestionIds.includes(currentQId);
@@ -465,6 +480,18 @@ export default function StudentExam() {
         return;
       }
     }
+
+    // 2. Restore target question code from browser cache if available
+    const nextQ = examData?.questions[idx];
+    if (nextQ && nextQ._id) {
+      try {
+        const cachedCode = localStorage.getItem(`leeteval_code_${sessionId}_${nextQ._id}`);
+        if (cachedCode !== null && cachedCode !== undefined && cachedCode !== '') {
+          setCodeMap((prev) => ({ ...prev, [nextQ._id]: cachedCode }));
+        }
+      } catch (e) {}
+    }
+
     setActiveQuestionIndex(idx);
     setVerdict(null);
     setRawOutput('');
@@ -490,6 +517,12 @@ export default function StudentExam() {
     const currentQ = examData?.questions[activeQuestionIndex];
     if (!currentQ) return;
 
+    const currentCode = codeMap[currentQ._id] || '';
+    // Ensure current code is cached locally
+    try {
+      localStorage.setItem(`leeteval_code_${sessionId}_${currentQ._id}`, currentCode);
+    } catch (e) {}
+
     setRunning(true);
     setExecutionPhase('pending');
     setVerdict('Running...');
@@ -504,7 +537,7 @@ export default function StudentExam() {
         sessionId,
         questionId: currentQ._id,
         language: selectedLanguage,
-        code: codeMap[currentQ._id],
+        code: currentCode,
         socketId: socketRef.current?.id
       });
 
@@ -537,6 +570,22 @@ export default function StudentExam() {
     const currentQ = examData?.questions[activeQuestionIndex];
     if (!currentQ) return;
 
+    const currentCode = codeMap[currentQ._id] || '';
+
+    // Save to local browser cache immediately
+    try {
+      localStorage.setItem(`leeteval_code_${sessionId}_${currentQ._id}`, currentCode);
+    } catch (e) {}
+
+    // Auto-save code to database on Submit
+    try {
+      axios.post('/api/student/autosave', {
+        sessionId,
+        questionId: currentQ._id,
+        code: currentCode
+      }).catch(() => {});
+    } catch (e) {}
+
     setSubmitting(true);
     setExecutionPhase('pending');
     setVerdict('Submitting...');
@@ -551,7 +600,7 @@ export default function StudentExam() {
         sessionId,
         questionId: currentQ._id,
         language: selectedLanguage,
-        code: codeMap[currentQ._id],
+        code: currentCode,
         socketId: socketRef.current?.id
       });
 
