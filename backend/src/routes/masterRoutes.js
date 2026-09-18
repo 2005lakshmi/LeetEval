@@ -380,12 +380,14 @@ router.get('/demo-rooms', async (req, res) => {
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
 
+    const fortyFiveSecsAgo = new Date(Date.now() - 45000);
     const results = await Promise.all(demoRooms.map(async (dr) => {
       const isExpired = dr.isExpired();
       const studentCount = await StudentSession.countDocuments({ roomId: dr.roomId?._id });
       const onlineCount = await StudentSession.countDocuments({ 
         roomId: dr.roomId?._id, 
-        status: { $in: ['admitted', 'active'] } 
+        status: { $in: ['admitted', 'active'] },
+        lastSeenAt: { $gte: fortyFiveSecsAgo }
       });
 
       return {

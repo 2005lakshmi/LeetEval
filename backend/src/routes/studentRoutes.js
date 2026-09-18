@@ -475,14 +475,21 @@ const findDemoRoomBySlugOrFallback = async (slug) => {
   let demoRoom = null;
   const now = new Date();
 
+  // Filter that matches any demo room that is NOT expired
+  const nonExpiredFilter = {
+    $or: [
+      { expirationType: 'none' },
+      { expireAt: null },
+      { expireAt: { $exists: false } },
+      { expireAt: { $gt: now } }
+    ]
+  };
+
   if (cleanSlug && cleanSlug !== 'demo') {
     // 1. Exact lookup for custom slug: search for active non-expired room first!
     demoRoom = await DemoRoom.findOne({
       slug: cleanSlug,
-      $or: [
-        { expireAt: null },
-        { expireAt: { $gt: now } }
-      ]
+      ...nonExpiredFilter
     }).sort({ createdAt: -1 }).populate('paperId');
 
     // 2. If no active room exists for custom slug, fetch latest expired room (to report expired status)
@@ -493,19 +500,13 @@ const findDemoRoomBySlugOrFallback = async (slug) => {
     // 3. For root /demo path: search for active non-expired room with slug 'demo' first!
     demoRoom = await DemoRoom.findOne({
       slug: 'demo',
-      $or: [
-        { expireAt: null },
-        { expireAt: { $gt: now } }
-      ]
+      ...nonExpiredFilter
     }).sort({ createdAt: -1 }).populate('paperId');
 
     // 4. Fallback for root /demo path: pick latest active non-expired demo room in system
     if (!demoRoom) {
       demoRoom = await DemoRoom.findOne({
-        $or: [
-          { expireAt: null },
-          { expireAt: { $gt: now } }
-        ]
+        ...nonExpiredFilter
       }).sort({ createdAt: -1 }).populate('paperId');
     }
 
@@ -540,9 +541,12 @@ router.get('/demo/:slug', async (req, res) => {
       return res.status(410).json({ message: 'This demo room link has expired', expired: true });
     }
 
+    // Only count students with active heartbeats in last 45 seconds as online
+    const fortyFiveSecsAgo = new Date(Date.now() - 45000);
     const onlineCount = await StudentSession.countDocuments({
       roomId: demoRoom.roomId,
-      status: { $in: ['admitted', 'active'] }
+      status: { $in: ['admitted', 'active'] },
+      lastSeenAt: { $gte: fortyFiveSecsAgo }
     });
 
     const studentCount = await StudentSession.countDocuments({ roomId: demoRoom.roomId });
