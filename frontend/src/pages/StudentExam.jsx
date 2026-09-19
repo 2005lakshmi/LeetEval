@@ -76,17 +76,17 @@ export default function StudentExam() {
     return String(inp);
   };
 
-  // Force Desktop Site Mode for Mobile Devices on Exam Workspace
+  // Force Desktop Site Mode for Mobile Devices on Exam Workspace (Auto-fits 100% on screen without scrolling)
   useEffect(() => {
     let metaViewport = document.querySelector('meta[name="viewport"]');
     const originalContent = metaViewport ? metaViewport.getAttribute('content') : 'width=device-width, initial-scale=1.0';
 
     if (metaViewport) {
-      metaViewport.setAttribute('content', 'width=1280, initial-scale=0.35, maximum-scale=3.0, user-scalable=yes');
+      metaViewport.setAttribute('content', 'width=1280');
     } else {
       metaViewport = document.createElement('meta');
       metaViewport.name = 'viewport';
-      metaViewport.content = 'width=1280, initial-scale=0.35, maximum-scale=3.0, user-scalable=yes';
+      metaViewport.content = 'width=1280';
       document.head.appendChild(metaViewport);
     }
 
