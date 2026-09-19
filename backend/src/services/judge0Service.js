@@ -186,8 +186,14 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       const mainPath = path.join(tmpDir, 'Main.java');
       fs.writeFileSync(mainPath, wrappedScript, 'utf8');
 
-      // Compile Main.java with UTF-8 encoding support and no debug symbols (-g:none for max compile speed)
-      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', '-g:none', 'Main.java'], { cwd: tmpDir, timeout: 20000 });
+      // Try fast single-file Java execution first (Java 11+ directly runs Main.java in-memory without javac step)
+      const directRun = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main.java'], { cwd: tmpDir, timeout: 6000 });
+      if (!directRun.error && directRun.status === 0) {
+        return parseResultsOutput(directRun.stdout || '', directRun.stderr || '');
+      }
+
+      // Fallback: Compile Main.java with UTF-8 encoding & -g:none
+      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', '-g:none', 'Main.java'], { cwd: tmpDir, timeout: 5000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         return {
@@ -198,8 +204,8 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
         };
       }
 
-      // Execute Main class with tier 1 compilation for instant JVM warmup & 128m RAM cap
-      const runRes = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: tmpDir, timeout: 15000 });
+      // Execute Main class
+      const runRes = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: tmpDir, timeout: 5000 });
       
       if (runRes.error || runRes.status !== 0) {
         const errStr = runRes.stderr || 'Java Execution Error';
@@ -485,7 +491,19 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
     }
 
     if (lang === 'java') {
-      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', '-g:none', 'Main.java'], { cwd: tmpDir, timeout: 15000 });
+      // 1. Try fast single-file Java execution first (Java 11+ runs Main.java directly in-memory without separate javac step)
+      const directRun = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main.java'], { cwd: tmpDir, timeout: 5000 });
+      if (!directRun.error && directRun.status === 0) {
+        const rawOut = (directRun.stdout || '') + (directRun.stderr ? `\n${directRun.stderr}` : '');
+        return {
+          verdict: 'Success',
+          rawOutput: cleanOut(rawOut),
+          totalRuntimeMs: Date.now() - startTimeTotal
+        };
+      }
+
+      // 2. Fallback to javac + java if single-file mode fails (e.g. Java 8)
+      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', '-g:none', 'Main.java'], { cwd: tmpDir, timeout: 5000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         return {
@@ -495,7 +513,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
         };
       }
 
-      const runRes = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: tmpDir, timeout: 10000 });
+      const runRes = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: tmpDir, timeout: 5000 });
       const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
       return {
         verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
