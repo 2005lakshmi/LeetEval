@@ -186,8 +186,8 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       const mainPath = path.join(tmpDir, 'Main.java');
       fs.writeFileSync(mainPath, wrappedScript, 'utf8');
 
-      // Compile Main.java with UTF-8 encoding support
-      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 20000 });
+      // Compile Main.java with UTF-8 encoding support and no debug symbols (-g:none for max compile speed)
+      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', '-g:none', 'Main.java'], { cwd: tmpDir, timeout: 20000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         return {
@@ -198,8 +198,8 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
         };
       }
 
-      // Execute Main class with -Xmx128m RAM memory limit cap
-      const runRes = await execAsync('java', ['-Xmx128m', 'Main'], { cwd: tmpDir, timeout: 15000 });
+      // Execute Main class with tier 1 compilation for instant JVM warmup & 128m RAM cap
+      const runRes = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: tmpDir, timeout: 15000 });
       
       if (runRes.error || runRes.status !== 0) {
         const errStr = runRes.stderr || 'Java Execution Error';
@@ -485,7 +485,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
     }
 
     if (lang === 'java') {
-      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', 'Main.java'], { cwd: tmpDir, timeout: 15000 });
+      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', '-g:none', 'Main.java'], { cwd: tmpDir, timeout: 15000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         return {
@@ -495,7 +495,7 @@ async function executeRawBenchmarkCode({ language, code, customCommand = null })
         };
       }
 
-      const runRes = await execAsync('java', ['-Xmx128m', 'Main'], { cwd: tmpDir, timeout: 10000 });
+      const runRes = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: tmpDir, timeout: 10000 });
       const rawOut = (runRes.stdout || '') + (runRes.stderr ? `\n${runRes.stderr}` : '');
       return {
         verdict: (runRes.error || runRes.status !== 0) ? 'Runtime Error' : 'Success',
