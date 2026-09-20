@@ -132,11 +132,11 @@ export default function StudentWaitingRoom() {
               </div>
               
               <h1 className="font-['Playfair_Display',serif] text-4xl sm:text-5xl font-extrabold tracking-tight text-white drop-shadow-xl">
-                Admitted by Faculty
+                Admitted
               </h1>
               
               <p className="text-base text-white/90 max-w-sm mx-auto leading-relaxed drop-shadow font-medium">
-                Review the strict assessment proctoring rules before entering full screen mode
+                Review RULES before entering full screen mode
               </p>
             </div>
 
@@ -161,15 +161,14 @@ export default function StudentWaitingRoom() {
                   <div>
                     <strong className="text-amber-800 block mb-1 uppercase tracking-wider font-extrabold text-xs">What causes Tab Switch Violations?</strong>
                     <ul className="list-disc pl-4 space-y-1 text-[#222222] font-medium">
-                      <li>Switching to another browser tab or window</li>
-                      <li>Minimizing the browser window</li>
-                      <li>Clicking outside the browser (losing window focus)</li>
+                      <li>Switching Tabs</li>
+                      <li>Minimizing Browser</li>
                     </ul>
                   </div>
                 </div>
 
                 <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-[#C51F02] text-xs font-bold text-center font-mono">
-                  ⛔ Exceeding the permitted Warning or Tab Switch limits will automatically kick you off the exam!
+                  ⛔ Exceeding the permitted Warning or Tab Switch limits, kicks you off the exam!
                 </div>
               </div>
 
