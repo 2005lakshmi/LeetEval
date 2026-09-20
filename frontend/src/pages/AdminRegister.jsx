@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Code2, User, Mail, Lock, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { GradFlow } from 'gradflow';
+import { ArrowRight, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
 export default function AdminRegister() {
   const navigate = useNavigate();
@@ -27,99 +28,128 @@ export default function AdminRegister() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative overflow-hidden font-sans">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#2563EB]/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#111111] text-[#FFFFFF] font-['Source_Sans_3',sans-serif] flex items-center justify-center p-4 relative overflow-hidden select-none">
+      
+      {/* Native GradFlow Animated Canvas Background */}
+      <GradFlow
+        config={{
+          color1: { r: 14, g: 82, b: 255 },
+          color2: { r: 130, g: 220, b: 255 },
+          color3: { r: 255, g: 255, b: 255 },
+          speed: 0.4,
+          scale: 2.2,
+          type: 'animated',
+          noise: 0.5
+        }}
+        className="fixed inset-0 w-full h-full pointer-events-none z-0"
+      />
 
-      <div className="w-full max-w-md relative z-10">
-        <div className="text-center mb-8">
-          <div className="inline-flex p-3 rounded-2xl bg-[#2563EB]/10 border border-[#2563EB]/20 text-[#2563EB] mb-4 shadow-sm">
-            <Code2 className="w-9 h-9" />
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#0F172A]">Faculty Registration</h1>
-          <p className="text-sm text-[#475569] mt-2">Request an administrator account (pending Master approval)</p>
+      {/* Ambient Shading Overlay */}
+      <div className="fixed inset-0 bg-gradient-to-t from-[#111111]/40 via-transparent to-[#111111]/30 pointer-events-none z-0" />
+
+      <div className="w-full max-w-md relative z-10 my-8">
+        
+        {/* Header Section */}
+        <div className="text-center mb-8 space-y-3">
+          <h1 className="font-['Playfair_Display',serif] text-4xl sm:text-5xl font-extrabold tracking-tight text-[#FFFFFF] drop-shadow-xl">
+            Faculty Registration
+          </h1>
+          
+          <p className="text-base text-white/90 max-w-sm mx-auto leading-relaxed drop-shadow font-medium">
+            Request an administrator account (pending Master approval)
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 shadow-xl border border-[#E2E8F0]">
+        {/* Highly Transparent Cream Glassmorphism Form Card */}
+        <div className="relative rounded-xl p-8 bg-white/35 backdrop-blur-xl border border-white/70 shadow-[0_20px_50px_rgba(0,0,0,0.25)] text-[#111111] overflow-hidden">
+          
           {successMsg ? (
             <div className="text-center space-y-4">
-              <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
-              <h3 className="text-lg font-bold text-[#0F172A]">Registration Submitted!</h3>
-              <p className="text-sm text-[#475569] leading-relaxed">{successMsg}</p>
+              <CheckCircle2 className="w-12 h-12 text-emerald-700 mx-auto" />
+              <h3 className="text-xl font-extrabold text-[#111111]">Registration Submitted!</h3>
+              <p className="text-sm font-semibold text-[#111111]/90 leading-relaxed">{successMsg}</p>
               <Link
                 to="/admin/login"
-                className="inline-block w-full py-3 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl transition-all mt-4 text-center text-sm shadow-md"
+                className="w-full py-4 px-6 bg-[#0E52FF] hover:bg-[#0642d9] text-white font-mono font-bold text-base tracking-wider uppercase rounded-lg shadow-xl shadow-[#0E52FF]/35 flex items-center justify-center space-x-2 transition-all mt-4 active:scale-[0.99]"
               >
-                Back to Login
+                <span>BACK TO LOGIN</span>
+                <ArrowRight className="w-5 h-5 ml-1" />
               </Link>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
               {error && (
-                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm flex items-center space-x-2">
-                  <ShieldCheck className="w-5 h-5 flex-shrink-0 text-rose-600" />
-                  <span>{error}</span>
+                <div className="mb-6 p-4 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-900 text-sm flex items-center space-x-3 backdrop-blur-md">
+                  <ShieldCheck className="w-5 h-5 flex-shrink-0 text-rose-700" />
+                  <span className="font-bold">{error}</span>
                 </div>
               )}
 
+              {/* Full Name */}
               <div>
-                <label className="block text-xs font-bold text-[#334155] uppercase tracking-wider mb-2">Full Name</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#94A3B8]"><User className="w-5 h-5" /></div>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Prof. Alan Turing"
-                    className="w-full pl-11 pr-4 py-3 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-[#0F172A] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-none transition-all text-sm font-medium"
-                  />
-                </div>
+                <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="e.g. Prof. Alan Turing"
+                  className="w-full px-4 py-3.5 bg-white/90 border border-[#E5E0D8] rounded-lg text-[#111111] placeholder-[#777777] focus:outline-none focus:border-[#0E52FF] focus:ring-2 focus:ring-[#0E52FF]/20 transition-all text-base shadow-sm font-semibold"
+                />
               </div>
 
+              {/* Institutional Email */}
               <div>
-                <label className="block text-xs font-bold text-[#334155] uppercase tracking-wider mb-2">Institutional Email</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#94A3B8]"><Mail className="w-5 h-5" /></div>
-                  <input
-                    type="email"
-                    required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="faculty@university.edu"
-                    className="w-full pl-11 pr-4 py-3 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-[#0F172A] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-none transition-all text-sm font-medium"
-                  />
-                </div>
+                <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-2">
+                  Institutional Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="faculty@university.edu"
+                  className="w-full px-4 py-3.5 bg-white/90 border border-[#E5E0D8] rounded-lg text-[#111111] placeholder-[#777777] focus:outline-none focus:border-[#0E52FF] focus:ring-2 focus:ring-[#0E52FF]/20 transition-all text-base shadow-sm font-semibold"
+                />
               </div>
 
+              {/* Password */}
               <div>
-                <label className="block text-xs font-bold text-[#334155] uppercase tracking-wider mb-2">Password</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-[#94A3B8]"><Lock className="w-5 h-5" /></div>
-                  <input
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="••••••••"
-                    className="w-full pl-11 pr-4 py-3 bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl text-[#0F172A] focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-none transition-all text-sm font-medium"
-                  />
-                </div>
+                <label className="block text-xs font-extrabold text-[#111111] uppercase tracking-wider mb-2">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3.5 bg-white/90 border border-[#E5E0D8] rounded-lg text-[#111111] placeholder-[#777777] focus:outline-none focus:border-[#0E52FF] focus:ring-2 focus:ring-[#0E52FF]/20 transition-all text-base shadow-sm font-semibold"
+                />
               </div>
 
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 px-4 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-lg shadow-[#2563EB]/25 transition-all disabled:opacity-50 text-sm"
+                className="w-full py-4 px-6 bg-[#0E52FF] hover:bg-[#0642d9] text-white font-mono font-bold text-base tracking-wider uppercase rounded-lg shadow-xl shadow-[#0E52FF]/35 flex items-center justify-center space-x-2 transition-all disabled:opacity-50 mt-2 active:scale-[0.99]"
               >
-                {loading ? 'Submitting...' : 'Submit Faculty Registration'}
+                <span>{loading ? 'SUBMITTING...' : 'SUBMIT FACULTY REGISTRATION'}</span>
+                <ArrowRight className="w-5 h-5 ml-1" />
               </button>
 
-              <div className="text-center text-xs text-[#64748B] mt-4">
-                Already registered? <Link to="/admin/login" className="text-[#2563EB] font-bold hover:underline">Log in</Link>
+              <div className="text-center text-xs font-bold text-[#111111] mt-6">
+                Already registered?{' '}
+                <Link to="/admin/login" className="text-[#0E52FF] font-extrabold underline hover:text-[#0642d9]">
+                  Log in
+                </Link>
               </div>
             </form>
           )}
         </div>
+
       </div>
     </div>
   );
