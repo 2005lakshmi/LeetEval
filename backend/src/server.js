@@ -108,8 +108,7 @@ const { autoSeedMaster } = require('./seed/seedMaster');
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-connectDB().then(async () => {
-  await autoSeedMaster();
+connectDB().then(() => {
   server.listen(PORT, () => {
     console.log(`=======================================================`);
     console.log(`🚀 [Coding Assessment Platform API Server Running]`);
@@ -118,4 +117,5 @@ connectDB().then(async () => {
     console.log(`   Worker Concurrency: ${process.env.WORKER_CONCURRENCY || 2}`);
     console.log(`=======================================================`);
   });
+  autoSeedMaster().catch((err) => console.error('[Auto-Seed Async Error]:', err.message));
 });

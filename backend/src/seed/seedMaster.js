@@ -15,10 +15,9 @@ async function autoSeedMaster(
     const email = masterEmail.toLowerCase().trim();
     let master = await UserAdmin.findOne({ email });
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(masterPassword, salt);
-
     if (!master) {
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(masterPassword, salt);
       master = await UserAdmin.create({
         name: masterName,
         email,
@@ -28,11 +27,7 @@ async function autoSeedMaster(
       });
       console.log(`[Auto-Seed]: Created Master Admin account (${email})`);
     } else {
-      master.passwordHash = passwordHash;
-      master.role = 'master';
-      master.status = 'approved';
-      await master.save();
-      console.log(`[Auto-Seed]: Synced & Verified Master Admin password (${email})`);
+      console.log(`[Auto-Seed]: Verified Master Admin account (${email})`);
     }
 
     // Seed Demo Question: Two Sum

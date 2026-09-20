@@ -140,31 +140,13 @@ export default function AdminRegister() {
                 <ArrowRight className="w-5 h-5 ml-1" />
               </button>
 
-              
-              <div className="text-center text-xs font-bold text-[#111111] mt-6"> 
-                Already registered?{' '} 
-                <Link to="/admin/login" className="text-[#0E52FF] font-extrabold underline hover:text-[#0642d9]"> Log in </Link> 
-                <br /> 
-                <i>Drop a message to{' '}
-                  <a 
-                    href="https://wa.me." 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-[#0E52FF] hover:text-[#0642d9] underline transition-colors font-extrabold"
-                  >
-                    8310664557
-                  </a>
-                </i> 
-              </div>
-
-              {/* <div className="text-center text-xs font-bold text-[#111111] mt-6">
+              <div className="text-center text-xs font-bold text-[#111111] mt-6">
                 Already registered?{' '}
                 <Link to="/admin/login" className="text-[#0E52FF] font-extrabold underline hover:text-[#0642d9]">
                   Log in
                 </Link>
-<<<<<<< HEAD
                 <br />
-                <span className="mt-2 block italic text-[#444444]">
+                <i className="mt-2 block italic text-[#444444]">
                   Drop a message to{' '}
                   <a
                     href="https://wa.me/918310664557"
@@ -174,15 +156,11 @@ export default function AdminRegister() {
                   >
                     8310664557
                   </a>
-                </span>
-=======
-                br
-                <i>Drop a message to 8310664557</i>
->>>>>>> c8ef366ca014f93cfc8cf8ed9bd26373075d9e56
+                </i>
               </div>
             </form>
           )}
-        </div> */}
+        </div>
 
       </div>
     </div>
