@@ -145,6 +145,18 @@ export default function AdminRegister() {
                 <Link to="/admin/login" className="text-[#0E52FF] font-extrabold underline hover:text-[#0642d9]">
                   Log in
                 </Link>
+                <br />
+                <span className="mt-2 block italic text-[#444444]">
+                  Drop a message to{' '}
+                  <a
+                    href="https://wa.me/918310664557"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#0E52FF] hover:text-[#0642d9] underline transition-colors font-extrabold"
+                  >
+                    8310664557
+                  </a>
+                </span>
               </div>
             </form>
           )}
