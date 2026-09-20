@@ -67,6 +67,18 @@ export default function AdminRegister() {
             <div className="text-center space-y-4">
               <CheckCircle2 className="w-12 h-12 text-emerald-700 mx-auto" />
               <h3 className="text-xl font-extrabold text-[#111111]">Registration Submitted!</h3>
+              <br />
+                <i className="mt-2 block italic text-[#444444]">
+                  Drop a message to{' '}
+                  <a
+                    href="https://wa.me/918310664557"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#0E52FF] hover:text-[#0642d9] underline transition-colors font-extrabold"
+                  >
+                    8310664557
+                  </a>
+                </i>
               <p className="text-sm font-semibold text-[#111111]/90 leading-relaxed">{successMsg}</p>
               <Link
                 to="/admin/login"
