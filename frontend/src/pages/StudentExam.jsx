@@ -52,6 +52,7 @@ export default function StudentExam() {
 
   const [saveStatus, setSaveStatus] = useState('Saved');
   const [executionPhase, setExecutionPhase] = useState('idle'); // idle | pending | compiling | executing
+  const [queuePosition, setQueuePosition] = useState(0);
   const [selectedCaseIdx, setSelectedCaseIdx] = useState(0);
 
   const [sessionError, setSessionError] = useState(null);
@@ -196,6 +197,7 @@ export default function StudentExam() {
       setRunning(false);
       setSubmitting(false);
       setExecutionPhase('idle');
+      setQueuePosition(0);
       setVerdict(data.verdict);
       setRawOutput(data.rawOutput || '');
       setTestResults(data.testResults);
@@ -214,16 +216,24 @@ export default function StudentExam() {
     });
 
     socket.on('queue_position_update', (data) => {
+      if (data.queuePosition !== undefined) {
+        setQueuePosition(data.queuePosition);
+      }
       setRawOutput(`[QUEUE NOTICE]: ${data.message || 'Please wait, you are in queue to be executed...'}`);
     });
 
     socket.on('execution_phase_update', (data) => {
       setExecutionPhase(data.phase || 'compiling');
+      if (data.queuePosition !== undefined) {
+        setQueuePosition(data.queuePosition);
+      }
       if (data.phase === 'pending' && data.queuePosition) {
-        setRawOutput(`⏳ Pending... ${data.queuePosition} program(s) ahead of you in the queue.`);
+        setRawOutput(`⏳ Pending... Wait in queue: ${data.queuePosition} more ahead of you.`);
       } else if (data.phase === 'compiling') {
+        setQueuePosition(0);
         setRawOutput('🔧 Compiling your code...');
       } else if (data.phase === 'executing') {
+        setQueuePosition(0);
         setRawOutput('⚡ Executing against testcases...');
       }
     });
@@ -232,6 +242,7 @@ export default function StudentExam() {
       setRunning(false);
       setSubmitting(false);
       setExecutionPhase('idle');
+      setQueuePosition(0);
       setVerdict('Execution Flushed');
       setRawOutput(data.message || 'All execution processes were terminated. Run again.');
     });
@@ -1237,13 +1248,32 @@ export default function StudentExam() {
               {activeBottomConsole === 'result' && (
                 <div className="font-mono text-xs space-y-3">
                   {(running || submitting) ? (
-                    <div className="p-4 rounded-lg bg-[#282828] border border-[#00b8a3]/40 text-center space-y-2 font-mono">
+                    <div className="p-4 rounded-lg bg-[#282828]/95 backdrop-blur-md border border-[#00b8a3]/40 text-center space-y-3 font-mono shadow-2xl">
                       <div className="flex items-center justify-center space-x-2 text-[#00b8a3]">
                         <RefreshCw className="w-5 h-5 animate-spin" />
-                        <span className="font-bold text-sm">Your code is queued for execution...</span>
+                        <span className="font-bold text-sm">
+                          {executionPhase === 'pending' || queuePosition > 0
+                            ? `Wait in queue: ${queuePosition > 0 ? queuePosition : 1} more ahead of you...`
+                            : executionPhase === 'compiling'
+                            ? '🔧 Compiling your code...'
+                            : executionPhase === 'executing'
+                            ? '⚡ Executing against testcases...'
+                            : 'Evaluating solution on execution worker pool...'}
+                        </span>
                       </div>
-                      <p className="text-xs text-slate-400">
-                        Evaluating code against testcase suite on execution worker pool. Please wait a moment.
+
+                      {/* Transparent Floating Queue Badge */}
+                      {(queuePosition > 0 || executionPhase === 'pending') && (
+                        <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-[#00b8a3]/15 border border-[#00b8a3]/40 text-[#00b8a3] text-xs font-extrabold font-mono shadow-md backdrop-blur-md">
+                          <Clock className="w-3.5 h-3.5 animate-spin text-[#00b8a3]" />
+                          <span>Wait in queue: {queuePosition > 0 ? queuePosition : 1} more ahead of you</span>
+                        </div>
+                      )}
+
+                      <p className="text-[11px] text-slate-400 max-w-sm mx-auto leading-relaxed">
+                        {queuePosition > 0
+                          ? 'Your code is queued in server RAM. Execution timer (20s max for Java) only starts when your turn begins.'
+                          : 'Worker pool is executing testcase suite. Execution time is capped at 20s max.'}
                       </p>
                     </div>
                   ) : !verdict ? (

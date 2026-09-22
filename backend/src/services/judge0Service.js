@@ -187,13 +187,13 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
       fs.writeFileSync(mainPath, wrappedScript, 'utf8');
 
       // Try fast single-file Java execution first (Java 11+ directly runs Main.java in-memory without javac step)
-      const directRun = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main.java'], { cwd: tmpDir, timeout: 12000 });
+      const directRun = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main.java'], { cwd: tmpDir, timeout: 20000 });
       if (!directRun.error && directRun.status === 0) {
         return parseResultsOutput(directRun.stdout || '', directRun.stderr || '');
       }
 
       // Fallback: Compile Main.java with UTF-8 encoding & -g:none
-      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', '-g:none', 'Main.java'], { cwd: tmpDir, timeout: 12000 });
+      const compileRes = await execAsync('javac', ['-encoding', 'UTF-8', '-g:none', 'Main.java'], { cwd: tmpDir, timeout: 20000 });
       if (compileRes.error || compileRes.status !== 0) {
         const compileErr = compileRes.stderr || compileRes.error?.message || 'Compilation failed';
         return {
@@ -204,8 +204,8 @@ async function fallbackEvaluate(language, studentCode, testcases, customTemplate
         };
       }
 
-      // Execute Main class
-      const runRes = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: tmpDir, timeout: 12000 });
+      // Execute Main class with 20s max execution time limit once started
+      const runRes = await execAsync('java', ['-Xmx128m', '-XX:+TieredCompilation', '-XX:TieredStopAtLevel=1', 'Main'], { cwd: tmpDir, timeout: 20000 });
       
       if (runRes.error || runRes.status !== 0) {
         const errStr = runRes.stderr || 'Java Execution Error';

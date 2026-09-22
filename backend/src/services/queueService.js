@@ -143,9 +143,23 @@ let directQueue = [];
 let activeWorkersInDirectMode = 0;
 const MAX_DIRECT_CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '2', 10);
 
+function broadcastRamQueueUpdates() {
+  if (!ioInstance) return;
+  directQueue.forEach((item, index) => {
+    const queuePos = index + (activeWorkersInDirectMode >= MAX_DIRECT_CONCURRENCY ? 1 : 0);
+    const queueMsg = `Wait in queue: ${queuePos} more ahead of you...`;
+    const payload = { activeCount: activeWorkersInDirectMode, queuePosition: queuePos, message: queueMsg };
+    if (item.data.socketId) ioInstance.to(item.data.socketId).emit('queue_position_update', payload);
+    if (item.data.sessionId) ioInstance.to(`session_${item.data.sessionId}`).emit('queue_position_update', payload);
+    if (item.data.socketId) ioInstance.to(item.data.socketId).emit('execution_phase_update', { phase: 'pending', queuePosition: queuePos });
+    if (item.data.sessionId) ioInstance.to(`session_${item.data.sessionId}`).emit('execution_phase_update', { phase: 'pending', queuePosition: queuePos });
+  });
+}
+
 function enqueueDirectJob(data) {
   return new Promise((resolve, reject) => {
     directQueue.push({ data, resolve, reject });
+    broadcastRamQueueUpdates();
     processNextDirectJob();
   });
 }
@@ -158,17 +172,8 @@ function processNextDirectJob() {
   const { data, resolve, reject } = directQueue.shift();
   activeWorkersInDirectMode++;
 
-  // Broadcast live queue position updates to waiting students
-  directQueue.forEach((item, index) => {
-    const queuePos = index + 1;
-    const queueMsg = `Please wait, you are in queue: ${queuePos} program(s) ahead of you...`;
-    const payload = { activeCount: activeWorkersInDirectMode, queuePosition: queuePos, message: queueMsg };
-    if (ioInstance) {
-      if (item.data.socketId) ioInstance.to(item.data.socketId).emit('queue_position_update', payload);
-      if (item.data.sessionId) ioInstance.to(`session_${item.data.sessionId}`).emit('queue_position_update', payload);
-      if (item.data.socketId) ioInstance.to(item.data.socketId).emit('execution_phase_update', { phase: 'pending', queuePosition: queuePos });
-    }
-  });
+  // Broadcast live RAM queue position updates to remaining waiting students
+  broadcastRamQueueUpdates();
 
   processSubmissionJob(data)
     .then(resolve)
