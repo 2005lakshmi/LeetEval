@@ -13,12 +13,19 @@ function generateHarness(language, studentCode, testcases, functionName = 'solut
       .replace(/#\s*\{\{STUDENT_CODE\}\}/g, '{{STUDENT_CODE}}')
       .replace(/\/\/\s*\{\{STUDENT_CODE\}\}/g, '{{STUDENT_CODE}}');
 
+    const lang = (language || '').toLowerCase();
+    if (lang === 'java' && studentCode && studentCode.includes('class Solution')) {
+      const parts = cleanTemplate.split('{{STUDENT_CODE}}');
+      if (parts.length > 1) {
+        parts[0] = parts[0].replace(/class\s+Solution\s*\{[\s\S]*?\n\}/g, '/* $& */');
+        cleanTemplate = parts.join('{{STUDENT_CODE}}');
+      }
+    }
+
     let wrapped = cleanTemplate
       .replace('{{STUDENT_CODE}}', codeToInject)
       .replace('{{TESTCASES_JSON}}', formattedTestcases)
       .replace('{{FUNCTION_NAME}}', functionName);
-
-    const lang = (language || '').toLowerCase();
     if (lang === 'python') {
       const unpackHelper = `import io, sys, json, traceback
 
