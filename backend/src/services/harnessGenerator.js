@@ -13,39 +13,12 @@ function generateHarness(language, studentCode, testcases, functionName = 'solut
       .replace(/#\s*\{\{STUDENT_CODE\}\}/g, '{{STUDENT_CODE}}')
       .replace(/\/\/\s*\{\{STUDENT_CODE\}\}/g, '{{STUDENT_CODE}}');
 
-    const lang = (language || '').toLowerCase();
-    if (lang === 'java') {
-      // 1. Sanitize un-commented class Solution in custom template prior to STUDENT_CODE if studentCode also defines class Solution
-      if (studentCode && studentCode.includes('class Solution')) {
-        const parts = cleanTemplate.split('{{STUDENT_CODE}}');
-        if (parts.length > 1) {
-          parts[0] = parts[0].replace(/class\s+Solution\s*\{[\s\S]*?\n\}/g, '/* $& */');
-          cleanTemplate = parts.join('{{STUDENT_CODE}}');
-        }
-      }
-
-      // 2. Ensure public class Main is placed BEFORE any secondary helper class for Java single-file launcher compatibility
-      if (cleanTemplate.includes('public class Main') && cleanTemplate.includes('class Solution')) {
-        const mainMatch = cleanTemplate.match(/public\s+class\s+Main[\s\S]*?\n\}/);
-        const solMatch = cleanTemplate.match(/class\s+Solution[\s\S]*?\n\}/);
-        if (mainMatch && solMatch && cleanTemplate.indexOf(solMatch[0]) < cleanTemplate.indexOf(mainMatch[0])) {
-          // Re-order so public class Main comes first
-          let imports = '';
-          let rest = cleanTemplate;
-          const importMatches = cleanTemplate.match(/import\s+[\w\.\*]+;\s*/g);
-          if (importMatches) {
-            imports = importMatches.join('');
-            importMatches.forEach(imp => { rest = rest.replace(imp, ''); });
-          }
-          cleanTemplate = imports + '\n' + mainMatch[0] + '\n\n' + rest.replace(mainMatch[0], '').trim();
-        }
-      }
-    }
-
     let wrapped = cleanTemplate
       .replace('{{STUDENT_CODE}}', codeToInject)
       .replace('{{TESTCASES_JSON}}', formattedTestcases)
       .replace('{{FUNCTION_NAME}}', functionName);
+
+    const lang = (language || '').toLowerCase();
     if (lang === 'python') {
       const unpackHelper = `import io, sys, json, traceback
 
