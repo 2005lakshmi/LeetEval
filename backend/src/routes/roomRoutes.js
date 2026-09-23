@@ -87,12 +87,12 @@ router.post('/', async (req, res) => {
   }
 });
 
-// List rooms (with auto-expire check)
+// List rooms (with auto-expire check) — Excludes Demo rooms which are managed exclusively in Superpanel
 router.get('/', async (req, res) => {
   try {
     await updateExpiredRooms();
 
-    const rooms = await Room.find()
+    const rooms = await Room.find({ roomCode: { $not: /^DEMO_/i } })
       .populate('paperId', 'title timeLimitMinutes questionIds sequentialLock')
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
@@ -131,6 +131,9 @@ router.put('/:id/status', async (req, res) => {
 
     const room = await Room.findById(req.params.id);
     if (!room) return res.status(404).json({ message: 'Room not found' });
+    if (room.roomCode && room.roomCode.startsWith('DEMO_')) {
+      return res.status(403).json({ message: 'Demo links can only be managed from the Superpanel.' });
+    }
 
     room.status = status;
     if (status === 'live' && !room.admittedAt) {
@@ -158,6 +161,9 @@ router.post('/:id/end-all', async (req, res) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) return res.status(404).json({ message: 'Room not found' });
+    if (room.roomCode && room.roomCode.startsWith('DEMO_')) {
+      return res.status(403).json({ message: 'Demo links can only be managed from the Superpanel.' });
+    }
 
     room.status = 'ended';
     await room.save();
@@ -341,6 +347,9 @@ router.delete('/:id', async (req, res) => {
   try {
     const room = await Room.findById(req.params.id);
     if (!room) return res.status(404).json({ message: 'Exam room not found' });
+    if (room.roomCode && room.roomCode.startsWith('DEMO_')) {
+      return res.status(403).json({ message: 'Demo links can only be managed from the Superpanel.' });
+    }
 
     await StudentSession.deleteMany({ roomId: room._id });
     await Room.findByIdAndDelete(req.params.id);

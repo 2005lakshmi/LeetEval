@@ -27,7 +27,9 @@ export default function RoomManager() {
         axios.get('/api/rooms', authHeader),
         axios.get('/api/papers', authHeader)
       ]);
-      setRooms(rRes.data.rooms || []);
+      const allRooms = rRes.data.rooms || [];
+      const examRoomsOnly = allRooms.filter(r => !r.roomCode || !r.roomCode.startsWith('DEMO_'));
+      setRooms(examRoomsOnly);
       setPapers(pRes.data.papers || []);
       if (pRes.data.papers?.length > 0) {
         setSelectedPaperId(pRes.data.papers[0]._id);
